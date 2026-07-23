@@ -680,7 +680,7 @@ function LibrarySignInHint() {
       </div>
       <button
         type="button"
-        onClick={() => openSettings("general")}
+        onClick={() => openSettings()}
         className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90"
       >
         Go to Settings

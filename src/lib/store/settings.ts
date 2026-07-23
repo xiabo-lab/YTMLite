@@ -21,11 +21,18 @@ type State = {
   /** System toast on track change while the app is in the background
    *  (see `lib/playback-notifications.ts`). */
   playbackNotifications: boolean;
+  /** Lyrics-timing offset in seconds, −3.0…+3.0. Compensates for the
+   *  Bluetooth audio latency reaching the car speakers: lyric-line
+   *  selection uses `position − lyricsOffsetSec`, so a positive value
+   *  holds the lyrics back to match delayed audio, negative pushes them
+   *  ahead. See `lyrics-view.tsx`. */
+  lyricsOffsetSec: number;
   setCloseAction: (v: CloseButtonAction) => void;
   setCacheAutoClean: (v: CacheAutoCleanPeriod) => void;
   markCacheCleaned: () => void;
   setBackground: (v: BackgroundMode) => void;
   setPlaybackNotifications: (v: boolean) => void;
+  setLyricsOffsetSec: (v: number) => void;
 };
 
 /**
@@ -42,12 +49,19 @@ export const useSettingsStore = create<State>()(
       lastCacheCleanAt: 0,
       background: "ambient",
       playbackNotifications: false,
+      lyricsOffsetSec: 0,
       setCloseAction: (closeAction) => set({ closeAction }),
       setCacheAutoClean: (cacheAutoClean) => set({ cacheAutoClean }),
       markCacheCleaned: () => set({ lastCacheCleanAt: Date.now() }),
       setBackground: (background) => set({ background }),
       setPlaybackNotifications: (playbackNotifications) =>
         set({ playbackNotifications }),
+      // Clamp to the ±3.0 s range and snap to 0.1 s so persisted values
+      // and any programmatic callers stay within the slider's contract.
+      setLyricsOffsetSec: (v) =>
+        set({
+          lyricsOffsetSec: Math.round(Math.min(3, Math.max(-3, v)) * 10) / 10,
+        }),
     }),
     { name: "ytm-settings" },
   ),

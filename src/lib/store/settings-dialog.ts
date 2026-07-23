@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type SettingsTab = "general" | "appearance" | "storage";
+export type SettingsTab = "theme" | "storage" | "lyrics";
 
 type State = {
   open: boolean;
@@ -11,13 +11,13 @@ type State = {
 
 /**
  * Ephemeral UI state for the settings popup (not persisted — the
- * dialog always opens on General). Lives in a store rather than local
- * state because unrelated corners of the app open it: the sidebar
- * footer, the title-bar menu, and the "Go to Settings" sign-in CTAs.
+ * dialog always opens on Theme). Lives in a store rather than local
+ * state because unrelated corners of the app open it: the title-bar
+ * menu and the "Go to Settings" sign-in CTAs.
  */
 export const useSettingsDialog = create<State>()((set) => ({
   open: false,
-  tab: "general",
+  tab: "theme",
   setOpen: (open) => set({ open }),
   setTab: (tab) => set({ tab }),
 }));

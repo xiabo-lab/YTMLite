@@ -35,7 +35,7 @@ export default function App() {
     <ThemeProvider
       attribute="class"
       defaultTheme="dark"
-      enableSystem
+      enableSystem={false}
       storageKey="ytm-theme"
       disableTransitionOnChange
     >

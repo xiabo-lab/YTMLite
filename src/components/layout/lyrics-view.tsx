@@ -23,6 +23,7 @@ import {
 } from "@/lib/lyrics/sources";
 import { usePlaybackStore } from "@/lib/store/playback";
 import type { QueueTrack } from "@/lib/store/playback";
+import { useSettingsStore } from "@/lib/store/settings";
 import { cn } from "@/lib/utils";
 
 const PREF_KEY = "ytm:lyrics-source";
@@ -196,8 +197,15 @@ function TimedLyrics({
   const stage = display === "stage";
   const scrollRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
-  const position = usePlaybackStore((s) => s.position);
+  const rawPosition = usePlaybackStore((s) => s.position);
   const seek = usePlaybackStore((s) => s.seek);
+  // Lyrics-timing offset: the audio reaches the car speakers a moment
+  // after the app's playback clock over Bluetooth, so select the lyric
+  // line for `position − offset`. Positive offset holds lyrics back to
+  // match late audio; negative pushes them ahead. See the Lyrics Timing
+  // setting.
+  const offset = useSettingsStore((s) => s.lyricsOffsetSec);
+  const position = rawPosition - offset;
 
   const activeIdx = findActiveIdx(lines, position);
   const prevActiveRef = useRef(activeIdx);
@@ -210,7 +218,11 @@ function TimedLyrics({
   useEffect(() => {
     const container = scrollRef.current;
     if (!container) return;
-    const idx = findActiveIdx(lines, usePlaybackStore.getState().position);
+    const idx = findActiveIdx(
+      lines,
+      usePlaybackStore.getState().position -
+        useSettingsStore.getState().lyricsOffsetSec,
+    );
     prevActiveRef.current = idx;
     if (idx < 0) {
       container.scrollTop = 0;
@@ -232,7 +244,9 @@ function TimedLyrics({
         : container.clientHeight * ACTIVE_LINE_VIEWPORT_RATIO -
           el.clientHeight / 2;
     container.scrollTop = Math.max(0, elTopWithinContent - target);
-  }, [lines]);
+    // Re-snap when the timing offset changes so dragging the slider
+    // re-aligns the active line immediately.
+  }, [lines, offset]);
 
   useEffect(() => {
     if (activeIdx === prevActiveRef.current) return;

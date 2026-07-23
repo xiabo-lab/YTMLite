@@ -1,7 +1,7 @@
 import {
   DatabaseIcon,
   PaletteIcon,
-  Settings2Icon,
+  TimerIcon,
   XIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -12,9 +12,9 @@ import {
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { GeneralTab } from "@/components/settings/general-tab";
-import { AppearanceTab } from "@/components/settings/appearance-tab";
+import { ThemeTab } from "@/components/settings/theme-tab";
 import { StorageTab } from "@/components/settings/storage-tab";
+import { LyricsTimingTab } from "@/components/settings/lyrics-timing-tab";
 import {
   useSettingsDialog,
   type SettingsTab,
@@ -22,9 +22,9 @@ import {
 import { cn } from "@/lib/utils";
 
 const TABS: { id: SettingsTab; label: string; icon: LucideIcon }[] = [
-  { id: "general", label: "General", icon: Settings2Icon },
-  { id: "appearance", label: "Appearance", icon: PaletteIcon },
+  { id: "theme", label: "Theme", icon: PaletteIcon },
   { id: "storage", label: "Storage", icon: DatabaseIcon },
+  { id: "lyrics", label: "Lyrics Timing", icon: TimerIcon },
 ];
 
 /**
@@ -126,9 +126,9 @@ export function SettingsDialog() {
               toolbar and loops (scroll-down felt like being thrown
               back up). */}
           <div className="app-scroll min-w-0 flex-1 overflow-y-auto px-5 pb-5 [overflow-anchor:none]">
-            {tab === "general" && <GeneralTab />}
-            {tab === "appearance" && <AppearanceTab />}
+            {tab === "theme" && <ThemeTab />}
             {tab === "storage" && <StorageTab />}
+            {tab === "lyrics" && <LyricsTimingTab />}
           </div>
         </div>
       </DialogContent>

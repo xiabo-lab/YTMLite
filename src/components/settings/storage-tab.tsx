@@ -14,7 +14,6 @@ import {
   ImageIcon,
   LibraryIcon,
   Loader2Icon,
-  LockIcon,
   MusicIcon,
   Trash2Icon,
   type LucideIcon,
@@ -36,7 +35,6 @@ import { PERIOD_MS as AUTO_CLEAN_PERIOD_MS } from "@/lib/cache-cleanup";
 import { formatBytes, formatDateTime, formatRelative } from "@/lib/format";
 import { fetchLibraryTracks } from "@/lib/innertube/library";
 import { clearPrefetchMemo } from "@/lib/stream";
-import { usePremiumStore } from "@/lib/store/premium";
 import {
   useSettingsStore,
   type CacheAutoCleanPeriod,
@@ -66,7 +64,7 @@ export function StorageTab() {
         </Group>
         <CoverCacheGroup />
         {/* The track list is intentionally the last block on the tab. */}
-        <CacheGroupGate loggedIn={!!loggedIn.data} />
+        <CacheGroup loggedIn={!!loggedIn.data} />
       </TabPane>
     </>
   );
@@ -225,46 +223,6 @@ function CacheFolderGroup() {
 /* ------------------------------------------------------------------ */
 /* Track cache                                                         */
 /* ------------------------------------------------------------------ */
-
-function CacheGroupGate({ loggedIn }: { loggedIn: boolean }) {
-  const premium = usePremiumStore((s) => s.status);
-  if (premium !== "premium") {
-    return <PremiumGatedCacheGroup loggedIn={loggedIn} />;
-  }
-  return <CacheGroup loggedIn={loggedIn} />;
-}
-
-function PremiumGatedCacheGroup({ loggedIn }: { loggedIn: boolean }) {
-  const qc = useQueryClient();
-  return (
-    <Group>
-      <SettingRow
-        icon={LockIcon}
-        iconClassName="text-amber-600 dark:text-amber-400"
-        title="Track caching is Premium-only"
-        description={
-          loggedIn
-            ? "No active Premium subscription found on this account. Detection reads YT Music's account menu; if it got you wrong, re-check after a moment."
-            : "Sign in with a Google account that has YouTube Premium to keep played tracks on disk."
-        }
-        control={
-          loggedIn ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                void qc.invalidateQueries({ queryKey: ["premium-status"] });
-                toast.info("Re-checking your subscription");
-              }}
-            >
-              Re-check
-            </Button>
-          ) : undefined
-        }
-      />
-    </Group>
-  );
-}
 
 type CacheEntry = {
   videoId: string;

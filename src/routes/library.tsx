@@ -88,7 +88,7 @@ function LoggedOutState() {
           songs, playlists, and premium-quality streams.
         </p>
       </div>
-      <Button onClick={() => openSettings("general")}>Go to Settings</Button>
+      <Button onClick={() => openSettings()}>Go to Settings</Button>
     </div>
   );
 }
