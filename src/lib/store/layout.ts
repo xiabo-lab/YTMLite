@@ -13,24 +13,29 @@ type State = {
 };
 
 /**
- * Player layout preference. Three modes:
- *  - `right`    — fixed card on the right side of the window (default)
- *  - `bottom`   — compact horizontal bar pinned to the bottom of the page
- *  - `floating` — separate Tauri window that floats independently
- *
- * Persisted in localStorage so the user's choice survives restarts. The
- * floating window auto-spawns on startup if `floating` was the last
- * picked mode (logic in `app-shell.tsx`).
+ * Player layout. YTMLite is **bottom-bar only** — the Side Card and
+ * Floating Window modes were removed for the 1920×440 in-car screen.
+ * `LayoutMode` keeps all three variants so shared code that still
+ * branches on mode type-checks, but `mode` is pinned to `bottom`:
+ * `setMode` is a no-op and any stale persisted value is coerced on
+ * rehydrate via `merge`.
  */
 export const useLayoutStore = create<State>()(
   persist(
     (set) => ({
-      mode: "right",
+      mode: "bottom",
       floatingPinned: false,
-      setMode: (mode) => set({ mode }),
+      setMode: () => set({ mode: "bottom" }),
       setFloatingPinned: (floatingPinned) => set({ floatingPinned }),
     }),
-    { name: "ytm-layout" },
+    {
+      name: "ytm-layout",
+      merge: (persisted, current) => ({
+        ...current,
+        ...(persisted as Partial<State>),
+        mode: "bottom",
+      }),
+    },
   ),
 );
 

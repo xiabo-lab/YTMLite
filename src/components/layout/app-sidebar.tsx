@@ -9,7 +9,6 @@ import {
   CompassIcon,
   SearchIcon,
   LibraryIcon,
-  SettingsIcon,
   HeartIcon,
   ListMusicIcon,
   PinIcon,
@@ -59,7 +58,6 @@ import {
   usePinnedPlaylistsStore,
 } from "@/lib/store/pinned-playlists";
 import { openChannelPicker } from "@/lib/store/channel-picker";
-import { openSettings } from "@/lib/store/settings-dialog";
 import { UpdateBanner } from "@/components/layout/update-banner";
 import { fetchAccountInfo } from "@/lib/innertube/account";
 import { fetchLibraryPlaylists } from "@/lib/innertube/library";
@@ -149,18 +147,6 @@ export function AppSidebar() {
 
       <SidebarFooter>
         <UpdateBanner />
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Settings"
-              className={MENU_BTN_CLS}
-              onClick={() => openSettings()}
-            >
-              <SettingsIcon />
-              <span>Settings</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
         <UserProfile />
       </SidebarFooter>
     </Sidebar>

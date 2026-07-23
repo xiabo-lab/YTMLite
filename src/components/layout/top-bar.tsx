@@ -2,52 +2,24 @@ import { useEffect, useState } from "react";
 import { useRouter } from "@tanstack/react-router";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
-import { getVersion } from "@tauri-apps/api/app";
-import { openUrl } from "@tauri-apps/plugin-opener";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
   MoreHorizontalIcon,
   SettingsIcon,
-  LayoutDashboardIcon,
-  PanelRightIcon,
-  PanelBottomIcon,
-  ExternalLinkIcon,
-  PaletteIcon,
-  SunIcon,
-  MoonIcon,
-  MonitorIcon,
-  BugIcon,
   DownloadIcon,
   InfoIcon,
   PowerIcon,
 } from "lucide-react";
-import { useTheme } from "next-themes";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { useLayoutStore, type LayoutMode } from "@/lib/store/layout";
 import { openSettings } from "@/lib/store/settings-dialog";
 import { checkForUpdates } from "@/lib/updater";
 import { AboutDialog } from "@/components/layout/about-dialog";
@@ -80,7 +52,6 @@ const IS_TAURI =
 export function TopBar() {
   const router = useRouter();
   const [maximized, setMaximized] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
 
   useEffect(() => {
@@ -136,15 +107,9 @@ export function TopBar() {
                 <SettingsIcon />
                 Settings
               </DropdownMenuItem>
-              <LayoutSubMenu />
-              <ThemeSubMenu />
 
               <DropdownMenuSeparator />
 
-              <DropdownMenuItem onSelect={() => setReportOpen(true)}>
-                <BugIcon />
-                Report Issue
-              </DropdownMenuItem>
               <DropdownMenuItem
                 onSelect={() => {
                   void checkForUpdates({ silent: false });
@@ -224,167 +189,8 @@ export function TopBar() {
         </div>
       </header>
 
-      <ReportIssueDialog open={reportOpen} onOpenChange={setReportOpen} />
       <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />
     </>
-  );
-}
-
-function LayoutSubMenu() {
-  const mode = useLayoutStore((s) => s.mode);
-  const setMode = useLayoutStore((s) => s.setMode);
-  return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
-        <LayoutDashboardIcon />
-        Layout
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className="w-44">
-        <DropdownMenuRadioGroup
-          value={mode}
-          onValueChange={(v) => setMode(v as LayoutMode)}
-        >
-          <DropdownMenuRadioItem value="right">
-            <PanelRightIcon className="size-4" />
-            Side card
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="bottom">
-            <PanelBottomIcon className="size-4" />
-            Bottom bar
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="floating">
-            <ExternalLinkIcon className="size-4" />
-            Floating window
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
-  );
-}
-
-function ThemeSubMenu() {
-  const { theme, setTheme } = useTheme();
-  // `theme` is undefined during the very first client render (next-themes
-  // resolves it on mount). Fall back to "system" so the radio group has
-  // a valid value and doesn't briefly render with nothing selected.
-  const value = theme ?? "system";
-  return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
-        <PaletteIcon />
-        Theme
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent className="w-40">
-        <DropdownMenuRadioGroup
-          value={value}
-          onValueChange={(v) => setTheme(v)}
-        >
-          <DropdownMenuRadioItem value="light">
-            <SunIcon className="size-4" />
-            Light
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark">
-            <MoonIcon className="size-4" />
-            Dark
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="system">
-            <MonitorIcon className="size-4" />
-            System
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
-  );
-}
-
-const REPO_ISSUES_URL = "https://github.com/xiabo-lab/YTMLite/issues/new";
-
-/**
- * Feedback form that hands off to GitHub: Submit opens a prefilled
- * new-issue page in the default browser with the app version and OS
- * appended, so reports arrive with the diagnostics we always ask for.
- * Voting/discussion happens on GitHub — no backend of our own.
- */
-function ReportIssueDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-}) {
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-
-  useEffect(() => {
-    if (!open) {
-      setTitle("");
-      setBody("");
-    }
-  }, [open]);
-
-  const submit = async () => {
-    if (!body.trim()) return;
-    let version = "unknown";
-    try {
-      version = await getVersion();
-    } catch {
-      /* non-Tauri context (plain vite dev) — keep "unknown" */
-    }
-    const fullBody = [
-      body.trim(),
-      "",
-      "---",
-      `App version: ${version}`,
-      `OS: ${navigator.userAgent}`,
-    ].join("\n");
-    const params = new URLSearchParams({ body: fullBody });
-    if (title.trim()) params.set("title", title.trim());
-    try {
-      await openUrl(`${REPO_ISSUES_URL}?${params}`);
-      toast.success("Thanks! Finish submitting the issue in your browser.");
-      onOpenChange(false);
-    } catch (e) {
-      toast.error("Couldn't open the browser", { description: String(e) });
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Report an issue</DialogTitle>
-          <DialogDescription>
-            Tell us what went wrong or what you'd like to see. Submitting
-            opens a prefilled GitHub issue in your browser — app version
-            and OS are attached automatically.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-3">
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Short summary (optional)"
-          />
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="What happened? Steps to reproduce, expected vs actual…"
-            rows={6}
-            className="w-full resize-none rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 dark:bg-input/30"
-          />
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={() => void submit()} disabled={!body.trim()}>
-            Submit
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
