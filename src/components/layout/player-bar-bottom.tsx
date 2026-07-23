@@ -109,7 +109,7 @@ export function PlayerBarBottom() {
     // pop up instantly otherwise).
     <TooltipProvider delayDuration={800} skipDelayDuration={0}>
     <aside
-      className="relative z-10 mr-2 mb-2 flex shrink-0 flex-col gap-2 rounded-[10px] border border-sidebar-border bg-surface px-4 py-3 shadow-sm"
+      className="relative z-10 mr-2 mb-2 flex shrink-0 flex-col gap-2 rounded-[10px] border border-sidebar-border bg-surface px-4 py-2.5 shadow-sm"
     >
       {status === "error" && error ? (
         <div className="absolute -top-9 left-3 right-3 truncate rounded-md bg-destructive/90 px-3 py-1 text-xs text-destructive-foreground shadow">
@@ -131,13 +131,13 @@ export function PlayerBarBottom() {
               <Thumbnail
                 thumbnails={track.thumbnails}
                 alt={track.title}
-                className="size-14 shrink-0 rounded-md border border-hairline pointer-events-none"
+                className="size-11 shrink-0 rounded-md border border-hairline pointer-events-none"
                 targetSize={256}
                 highRes
                 overrideHighRes={iTunesCover}
               />
             ) : (
-              <div className="size-14 shrink-0 rounded-md border border-hairline bg-muted" />
+              <div className="size-11 shrink-0 rounded-md border border-hairline bg-muted" />
             )}
           </div>
           <div className="flex min-w-0 flex-1 flex-col gap-0.5">
