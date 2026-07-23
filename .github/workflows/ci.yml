@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        # Build first: the vite build generates src/routeTree.gen.ts
+        # (gitignored), which typecheck and lint need to resolve router
+        # types. Running tsc before it fails on a fresh checkout.
+        run: pnpm exec vite build
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+      - name: Lint
+        run: pnpm lint
+      - name: Test
+        run: pnpm test
+
+  rust:
+    # Both targets, because the backend is meaningfully different on each:
+    # DPAPI vs XChaCha20 for the cookie jar, SMTC vs MPRIS for media keys,
+    # and a pile of #[cfg] branches in between. A change that compiles on
+    # one can easily break the other, and Windows is the primary target.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Tauri system deps
+        # Kept in step with scripts/setup-pi.sh: this job is what keeps the
+        # Linux/Raspberry Pi build honest. libdbus-1-dev is souvlaki's MPRIS
+        # backend; libxdo-dev is Tauri's tray/window activation on X11.
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
+            librsvg2-dev libdbus-1-dev libxdo-dev patchelf
+      - name: cargo test
+        run: cargo test --lib --manifest-path src-tauri/Cargo.toml

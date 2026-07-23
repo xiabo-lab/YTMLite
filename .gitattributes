@@ -1,0 +1,19 @@
+# Normalise everything to LF in the repository and in the working tree.
+#
+# This project is developed on Windows but built on a Raspberry Pi, which
+# clones this repo directly. A CRLF checkout breaks shell scripts there with
+# an opaque "bad interpreter: No such file or directory" — scripts/setup-pi.sh
+# is the one that bites, and docs/raspberry-pi.md documents the symptom.
+# Forcing LF removes the failure mode instead of documenting a workaround.
+* text=auto eol=lf
+
+# Binary assets: never touch these.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.icns binary
+*.woff binary
+*.woff2 binary
+*.deb binary
+*.exe binary

@@ -1,0 +1,48 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the main window",
+  "windows": [
+    "main",
+    "player"
+  ],
+  "permissions": [
+    "core:default",
+    "opener:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "https://music.youtube.com/*" },
+        { "url": "https://www.youtube.com/*" },
+        { "url": "https://www.google.com/*" },
+        { "url": "https://i.ytimg.com/*" },
+        { "url": "https://yt3.ggpht.com/*" },
+        { "url": "https://yt3.googleusercontent.com/*" },
+        { "url": "https://lh3.googleusercontent.com/*" },
+        { "url": "https://itunes.apple.com/*" },
+        { "url": "https://apic-desktop.musixmatch.com/*" },
+        { "url": "https://genius.com/*" },
+        { "url": "https://lrclib.net/*" },
+        { "url": "https://music.163.com/*" },
+        { "url": "https://c.y.qq.com/*" },
+        { "url": "http://mobilecdn.kugou.com/*" },
+        { "url": "http://krcs.kugou.com/*" },
+        { "url": "http://lyrics.kugou.com/*" }
+      ]
+    },
+    "store:default",
+    "window-state:default",
+    "updater:default",
+    "process:allow-restart",
+    "core:event:default",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging",
+    "core:window:allow-outer-position",
+    "core:window:allow-outer-size",
+    "core:window:allow-set-always-on-top",
+    "core:window:allow-is-fullscreen",
+    "core:window:allow-set-fullscreen"
+  ]
+}
