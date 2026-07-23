@@ -5,34 +5,35 @@
 <h1 align="center">YTMLite</h1>
 
 <p align="center">
-  A fast, responsive YouTube Music desktop client for Windows and Raspberry Pi.
+  YouTube Music with synced lyrics for the <b>Raspberry Pi 5</b> — built for a 1920×440 in-car display.
 </p>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPLv3-blue.svg" alt="License: GPL-3.0" /></a>
+  <img src="https://img.shields.io/badge/Raspberry%20Pi%205-only-C51A4A?logo=raspberrypi&logoColor=white" alt="Raspberry Pi 5 only" />
 </p>
 
 <p align="center">
   <a href="../../releases/latest">
-    <img src="https://img.shields.io/badge/%E2%AC%87%20Download%20for%20Windows-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Download for Windows" height="60" />
+    <img src="https://img.shields.io/badge/%E2%AC%87%20Download%20the%20.deb%20(arm64)-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Download the arm64 .deb" height="60" />
   </a>
 </p>
 
-Built as a reaction to the sluggish webview-wrapper experience — YTMLite talks to YouTube's InnerTube API directly, renders its own UI, and caches aggressively, so navigation and playback feel instant.
+YTMLite is a **Raspberry Pi 5-only** build: a compact YouTube Music player that runs fullscreen on a 1920×440 in-car bar display, streams audio to the car over Bluetooth, and shows line-by-line synced lyrics with a timing knob to cancel Bluetooth latency. It talks to YouTube's InnerTube API directly and renders its own UI, so navigation and playback feel instant.
 
-![YTMLite — artist page with the player and synced lyrics](assets/screenshots/artist-page.jpg)
+![YTMLite running fullscreen on a Raspberry Pi 5 at 1920×440](assets/screenshots/ytmlite-1920x440.png)
 
 ## Features
 
+- **1920×440 in-car layout** — launches fullscreen and fills the short bar display; single bottom-bar player, no floating/side layouts
+- **Synced lyrics** — line-by-line synced lyrics from multiple providers (LRCLIB, Musixmatch, Genius), sized to stay readable on the short screen
+- **Lyrics timing offset** — a −3.0…+3.0 s knob (Settings → Lyrics Timing) that shifts the highlight to cancel the Bluetooth audio delay to the car speakers
+- **Plays to the car over Bluetooth** — routes audio to the vehicle (e.g. a Tesla Model Y) via A2DP
 - **Fast and responsive UI** — instant navigation with prefetch and aggressive caching; no page reloads, no spinners on every click
-- **Flexible player layouts** — dock the player at the bottom or as a right-side panel
-- **Floating player widget** — pop the player out into a compact always-on-top window
-- **Synced lyrics** — line-by-line synced lyrics from multiple providers (LRCLIB, Musixmatch, Genius)
 - **Hi-res cover art** — upgrades album covers to high-resolution studio art when available
 - **Full library support** — your playlists, likes, albums and artists; search with filters; radio/autoplay queues
-- **OS integration** — media keys and tray icon; System Media Transport Controls on Windows, MPRIS on Linux
+- **OS integration** — media keys and MPRIS on Linux
 - **Auto-updates** — the app updates itself from GitHub Releases, and keeps its yt-dlp copy fresh automatically
-- **Runs on a Raspberry Pi** — Pi 4/5 on 64-bit Raspberry Pi OS, with [documented caveats](docs/raspberry-pi.md)
 
 > **Disclaimer:** YTMLite is an unofficial client. It is not affiliated with,
 > endorsed by, or sponsored by Google or YouTube. "YouTube" and "YouTube Music"
@@ -42,22 +43,19 @@ Built as a reaction to the sluggish webview-wrapper experience — YTMLite talks
 
 ## Install
 
-Download the latest installer from the [Releases](../../releases) page and run it.
+YTMLite runs on a **Raspberry Pi 5** (8 GB recommended) on 64-bit Raspberry Pi
+OS — it is not built for any other platform.
 
-- **Windows 10/11**, or **Raspberry Pi 4/5** on 64-bit Raspberry Pi OS
-  (build from source — see [docs/raspberry-pi.md](docs/raspberry-pi.md),
-  which also lists what the Pi build can't do).
+- Grab the latest `YTMLite_*_arm64.deb` from the [Releases](../../releases) page
+  and install it: `sudo apt install ./YTMLite_*_arm64.deb`.
 - On first launch the app downloads its own copy of yt-dlp (~12 MB) into its
   data folder and keeps it updated automatically.
-- Signing in is optional: browse and playback work anonymously; sign in to get
-  your library, likes, and playlists.
+- Sign in to Google **once** on first launch to load your library, likes, and
+  playlists; the session is saved. Browse and playback also work anonymously.
+- The app launches fullscreen for the in-car panel. Pair the Pi's Bluetooth to
+  the car and set it as the default audio output.
 
 ### FAQ
-
-**Windows says "Windows protected your PC" (SmartScreen).**
-The installer is not code-signed (certificates are expensive for a free
-open-source project). Click "More info" → "Run anyway". The source code is
-public — you can audit it or build it yourself.
 
 **My antivirus flags the app / yt-dlp.**
 yt-dlp is a widely-used open-source downloader that some AV vendors
@@ -77,7 +75,7 @@ yt-dlp copy every ~3 days). Restarting the app forces the check.
 
 ## Stack
 
-- **Shell:** Tauri 2 (Rust backend, system webview — WebView2 on Windows, WebKitGTK on Linux)
+- **Shell:** Tauri 2 (Rust backend, WebKitGTK system webview on Raspberry Pi OS)
 - **Frontend:** React 19 + TypeScript
 - **Build:** Vite 7
 - **Styling:** Tailwind CSS v4
@@ -105,8 +103,9 @@ pnpm format       # prettier --write
 pnpm build        # tsc + vite production build
 ```
 
-CI (`.github/workflows/ci.yml`) runs typecheck, lint, tests, build and
-`cargo check` on every push / PR.
+CI (`.github/workflows/ci.yml`) runs typecheck, lint, tests, the frontend
+build and `cargo test` (Linux/arm64 only) on every push / PR. Releases build
+the arm64 `.deb` on GitHub's hosted ARM runner (`.github/workflows/release.yml`).
 
 ## Project layout
 
@@ -115,7 +114,7 @@ src/
 ├── routes/              # TanStack Router file-based routes
 ├── components/
 │   ├── ui/              # shadcn primitives
-│   ├── layout/          # AppShell, sidebar, topbar, player bar, floating player, lyrics
+│   ├── layout/          # AppShell, sidebar, topbar, bottom player bar, lyrics
 │   └── shared/          # Track list/rows, cards, shelves, context menus
 ├── lib/
 │   ├── innertube/        # Raw InnerTube client + parsers
