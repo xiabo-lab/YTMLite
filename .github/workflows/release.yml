@@ -1,7 +1,9 @@
-# Builds the Windows installer and the Raspberry Pi (arm64) .deb, then
-# publishes them to a draft GitHub Release whenever a `v*` tag is pushed:
-#   git tag v0.3.3 && git push origin v0.3.3
+# Builds the Raspberry Pi (arm64) .deb, then publishes it to a draft GitHub
+# Release whenever a `v*` tag is pushed:
+#   git tag v0.1.0 && git push origin v0.1.0
 # → wait for this workflow → review the draft on the Releases page → publish.
+#
+# YTMLite is a Pi-only app, so there is no Windows leg — only the arm64 .deb.
 #
 # IMPORTANT: scripts/update-pi.sh reads /releases/latest, which the GitHub
 # API only returns for *published* releases. A draft is invisible to it, so
@@ -21,15 +23,7 @@ jobs:
   build:
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            name: windows
-          - os: ubuntu-24.04-arm
-            name: raspberry-pi-arm64
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -41,9 +35,8 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          key: ${{ matrix.name }}
+          key: raspberry-pi-arm64
       - name: Install Tauri system deps
-        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \

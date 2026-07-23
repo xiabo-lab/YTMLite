@@ -29,23 +29,15 @@ jobs:
         run: pnpm test
 
   rust:
-    # Both targets, because the backend is meaningfully different on each:
-    # DPAPI vs XChaCha20 for the cookie jar, SMTC vs MPRIS for media keys,
-    # and a pile of #[cfg] branches in between. A change that compiles on
-    # one can easily break the other, and Windows is the primary target.
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    # YTMLite is Pi-only, so the backend is built for Linux/arm64 alone —
+    # no Windows leg. This job keeps the Linux/Raspberry Pi build honest.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - name: Install Tauri system deps
-        # Kept in step with scripts/setup-pi.sh: this job is what keeps the
-        # Linux/Raspberry Pi build honest. libdbus-1-dev is souvlaki's MPRIS
-        # backend; libxdo-dev is Tauri's tray/window activation on X11.
-        if: runner.os == 'Linux'
+        # Kept in step with scripts/setup-pi.sh. libdbus-1-dev is souvlaki's
+        # MPRIS backend; libxdo-dev is Tauri's tray/window activation on X11.
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev \
