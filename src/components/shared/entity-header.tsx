@@ -14,6 +14,9 @@ type Props = {
   /** Extra buttons rendered after Play/Shuffle — used for entity-
    *  specific actions (Pin playlist, Follow artist, etc.). */
   actions?: ReactNode;
+  /** Page controls that live with the header (playlist search + sort).
+   *  Rendered below the action row. */
+  controls?: ReactNode;
 };
 
 /**
@@ -34,6 +37,7 @@ export function EntityHeader({
   onPlay,
   onShuffle,
   actions,
+  controls,
 }: Props) {
   const setConfig = useEntityHeaderStore((s) => s.setConfig);
 
@@ -52,6 +56,7 @@ export function EntityHeader({
       onPlay,
       onShuffle,
       actions,
+      controls,
     });
     return () => setConfig(null);
   });

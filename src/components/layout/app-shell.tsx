@@ -19,6 +19,7 @@ import { KaraokeView } from "@/components/layout/karaoke-view";
 import { useKaraokeStore } from "@/lib/store/karaoke";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useTwoFingerScroll } from "@/hooks/use-two-finger-scroll";
 import { useAudioEngine } from "@/lib/audio-engine";
 import { useCacheAutoClean } from "@/lib/cache-cleanup";
 import { usePlaybackNotifications } from "@/lib/playback-notifications";
@@ -122,6 +123,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   // route changes so opening a playlist (or any other page) doesn't land
   // on whatever scrollTop the previous page happened to leave behind.
   const mainRef = useRef<HTMLElement>(null);
+  // Two fingers pan the feed on the Pi's touch panel — one finger never
+  // starts a scroll there, and reserving it keeps taps unambiguous.
+  useTwoFingerScroll(mainRef);
   const pathname = useLocation({ select: (loc) => loc.pathname });
   useEffect(() => {
     if (mainRef.current) mainRef.current.scrollTop = 0;
@@ -227,23 +231,30 @@ export function AppShell({ children }: { children: ReactNode }) {
                 mode === "right" && hasTrack && "pr-[23rem]",
               )}
             >
-              {/* Route entity header (playlist / album / artist).
-                  Lives ABOVE <main> in flex flow so that
+              {/* Header + content. Normally stacked: the entity header
+                  is a bar ABOVE <main> so that
                   (a) a transparent bar inherits the app-wide
                       <BackgroundCover> tint directly, and
                   (b) track rows inside <main> are clipped by <main>'s
-                      overflow and never appear behind the bar. */}
-              <EntityPageHeader />
-              {/* Plain scroller — NOT Radix ScrollArea. Radix wraps the
-                  content in `display: table; min-width: 100%` which grows
-                  to intrinsic width and defeats any nested `overflow-x`
-                  (our horizontal carousels would never clip). */}
-              <main
-                ref={mainRef}
-                className="app-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden"
-              >
-                {children}
-              </main>
+                      overflow and never appear behind the bar.
+                  On a short screen (`short:`) the two sit side by side
+                  instead — the header becomes a left column and the
+                  content keeps the full height next to it. The header
+                  renders nothing on routes without one, so pages like
+                  Home get the whole width either way. */}
+              <div className="flex min-h-0 min-w-0 flex-1 flex-col short:flex-row">
+                <EntityPageHeader />
+                {/* Plain scroller — NOT Radix ScrollArea. Radix wraps the
+                    content in `display: table; min-width: 100%` which grows
+                    to intrinsic width and defeats any nested `overflow-x`
+                    (our horizontal carousels would never clip). */}
+                <main
+                  ref={mainRef}
+                  className="app-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden"
+                >
+                  {children}
+                </main>
+              </div>
               {mode === "bottom" && hasTrack && <PlayerBarBottom />}
             </div>
             {mode === "right" && hasTrack && <PlayerBar />}

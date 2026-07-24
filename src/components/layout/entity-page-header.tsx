@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import { PlayIcon, ShuffleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Thumbnail } from "@/components/shared/thumbnail";
+import { useIsShortScreen } from "@/hooks/use-short-screen";
 import { cn } from "@/lib/utils";
 import {
   useEntityHeaderStore,
@@ -56,6 +57,7 @@ const EASE = "cubic-bezier(0.25, 0.46, 0.45, 0.94)";
 
 export function EntityPageHeader() {
   const config = useEntityHeaderStore((s) => s.config);
+  const short = useIsShortScreen();
   const [compact, setCompact] = useState(false);
   const heroRef = useRef<HTMLDivElement>(null);
   const [heroHeight, setHeroHeight] = useState(0);
@@ -65,6 +67,10 @@ export function EntityPageHeader() {
   // wheel/touch event (120 Hz on high-refresh displays), which is
   // wasted work even though setState bails out on equal values.
   useEffect(() => {
+    // The side-column layout has no compact state to morph into — and
+    // main's scrollTop is the track list's, which says nothing about
+    // the header sitting beside it.
+    if (short) return;
     const scroller = document.querySelector<HTMLElement>("main.app-scroll");
     if (!scroller) return;
     let raf = 0;
@@ -87,7 +93,7 @@ export function EntityPageHeader() {
       scroller.removeEventListener("scroll", onScroll);
       if (raf) cancelAnimationFrame(raf);
     };
-  }, []);
+  }, [short]);
 
   // Track the hero's natural height so the container's height tween
   // has a real target. `ResizeObserver` re-measures when content
@@ -104,6 +110,12 @@ export function EntityPageHeader() {
   }, [config]);
 
   if (!config) return null;
+
+  // Short screens (the 1920x440 panel): the header is a fixed-width
+  // column to the LEFT of the content, not a bar above it. There's no
+  // vertical room to stack a hero over a track list, and the sideways
+  // split means neither has to give any up. See `useIsShortScreen`.
+  if (short) return <ColumnLayout config={config} />;
 
   return (
     <div
@@ -214,7 +226,82 @@ const HeroLayout = memo(function HeroLayout({
             {config.actions}
           </div>
         ) : null}
+        {config.controls ? (
+          <div className="pt-1">{config.controls}</div>
+        ) : null}
       </div>
+    </div>
+  );
+});
+
+/**
+ * Short-screen header: a column beside the content instead of a bar
+ * above it. Cover and title share a row (a 160px cover stacked over the
+ * text would eat the whole 440px panel on its own), with the action
+ * buttons and the page's own controls below.
+ *
+ * Scrolls internally: a long description or a tall `controls` slot
+ * must not push the buttons off the bottom of the screen.
+ */
+const ColumnLayout = memo(function ColumnLayout({
+  config,
+}: {
+  config: EntityHeaderConfig;
+}) {
+  const hasButtons = !!(config.onPlay || config.onShuffle || config.actions);
+  return (
+    <div className="app-scroll flex w-[24rem] shrink-0 flex-col gap-3 overflow-y-auto border-r border-hairline px-4 pb-4 pt-3">
+      <div className="flex items-start gap-3">
+        <Thumbnail
+          thumbnails={config.thumbnails}
+          alt={config.title}
+          round={config.round}
+          className={cn(
+            "size-24 shrink-0",
+            config.round ? "" : "border border-hairline shadow-lg",
+          )}
+          targetSize={256}
+          highRes
+        />
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <h1 className="line-clamp-2 text-xl font-bold leading-tight tracking-tight">
+            {config.title}
+          </h1>
+          {config.subtitle ? (
+            <p className="truncate text-xs text-muted-foreground">
+              {config.subtitle}
+            </p>
+          ) : null}
+          {config.metadata ? (
+            <p className="truncate text-xs text-muted-foreground">
+              {config.metadata}
+            </p>
+          ) : null}
+        </div>
+      </div>
+
+      {hasButtons ? (
+        <div className="flex flex-wrap gap-2">
+          {config.onPlay ? (
+            <Button
+              onClick={config.onPlay}
+              className="flex-1 bg-brand text-white hover:bg-brand/90"
+            >
+              <PlayIcon className="fill-current" />
+              Play
+            </Button>
+          ) : null}
+          {config.onShuffle ? (
+            <Button variant="outline" className="flex-1" onClick={config.onShuffle}>
+              <ShuffleIcon />
+              Shuffle
+            </Button>
+          ) : null}
+          {config.actions}
+        </div>
+      ) : null}
+
+      {config.controls}
     </div>
   );
 });

@@ -171,7 +171,9 @@ function PlaylistPageView() {
   ].filter(Boolean) as string[];
 
   return (
-    <div className="flex flex-col gap-8 px-6 pb-6 pt-3">
+    // Tighter padding in the short layout: the content pane is now a
+    // column beside the header, and every px of width is a track title.
+    <div className="flex flex-col gap-8 px-6 pb-6 pt-3 short:gap-2 short:px-3 short:pt-2">
       <EntityHeader
         title={header.title}
         metadata={metadataParts.join(" • ")}
@@ -213,25 +215,34 @@ function PlaylistPageView() {
             </Button>
           )
         }
+        // Search + sort belong to the header, not the list: on a short
+        // screen they ride along in the side column, leaving the whole
+        // content pane to the tracks.
+        controls={
+          <div className="flex flex-col gap-2">
+            {/* Side-by-side normally; stacked in the narrow side column,
+                where "Date added (newest)" beside a search box leaves
+                neither enough room. */}
+            <div className="flex items-center gap-2 short:flex-col short:items-stretch">
+              <SearchInput value={searchQuery} onChange={setSearchQuery} />
+              <SortMenu
+                mode={sortMode}
+                onChange={(m) => setSortMode(id, m)}
+                isLikedSongs={isLikedSongs}
+              />
+            </div>
+            {(sortMode !== "default" || normalizedQuery) &&
+            query.hasNextPage ? (
+              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2Icon className="size-3 shrink-0 animate-spin" />
+                {normalizedQuery
+                  ? "Loading full playlist for search…"
+                  : "Loading full playlist for sort…"}
+              </span>
+            ) : null}
+          </div>
+        }
       />
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <SearchInput value={searchQuery} onChange={setSearchQuery} />
-          <SortMenu
-            mode={sortMode}
-            onChange={(m) => setSortMode(id, m)}
-            isLikedSongs={isLikedSongs}
-          />
-        </div>
-        {(sortMode !== "default" || normalizedQuery) && query.hasNextPage ? (
-          <span className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2Icon className="size-3 animate-spin" />
-            {normalizedQuery
-              ? "Loading full playlist for search…"
-              : "Loading full playlist for sort…"}
-          </span>
-        ) : null}
-      </div>
 
       <JumpToCurrentButton tracks={visibleTracks} />
 
@@ -365,7 +376,7 @@ function SortMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button variant="outline" size="sm" className="short:w-full">
           <ArrowDownAZIcon />
           {labelFor(mode)}
         </Button>

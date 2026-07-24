@@ -109,7 +109,14 @@ export function PlayerBarBottom() {
     // pop up instantly otherwise).
     <TooltipProvider delayDuration={800} skipDelayDuration={0}>
     <aside
-      className="relative z-10 mr-2 mb-2 flex shrink-0 flex-col gap-2 rounded-[10px] border border-sidebar-border bg-surface px-4 py-2.5 shadow-sm"
+      // Every ghost icon button in this bar is grown to a 44px touch
+      // target with a 20px glyph. Targeting `[data-size=icon]
+      // [data-variant=ghost]` rather than adding a class to each button
+      // reaches the ones that live inside shared components
+      // (like/queue/volume/more) without threading a prop through all
+      // of them — and leaves the solid Play button at its larger size,
+      // since it isn't a ghost.
+      className="relative z-10 mr-2 mb-2 flex shrink-0 flex-col gap-2 rounded-[10px] border border-sidebar-border bg-surface px-4 py-2.5 shadow-sm [&_button[data-size=icon][data-variant=ghost]]:size-11 [&_button[data-size=icon][data-variant=ghost]_svg]:size-5"
     >
       {status === "error" && error ? (
         <div className="absolute -top-9 left-3 right-3 truncate rounded-md bg-destructive/90 px-3 py-1 text-xs text-destructive-foreground shadow">
@@ -159,8 +166,12 @@ export function PlayerBarBottom() {
         </div>
 
         {/* CENTER: shuffle | prev | PLAY | next | repeat. Width is
-            implicit (no flex-1) so the wings push it to the middle. */}
-        <div className="flex shrink-0 items-center gap-1">
+            implicit (no flex-1) so the wings push it to the middle.
+            The gap is wide because this bar is driven by a finger on
+            the Pi's touch panel — adjacent 36px targets 4px apart are
+            a mis-tap waiting to happen (skipping a track when you
+            meant to pause). Same reasoning as the karaoke stage. */}
+        <div className="flex shrink-0 items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -221,8 +232,10 @@ export function PlayerBarBottom() {
           </Tooltip>
         </div>
 
-        {/* RIGHT wing: secondary actions, justified to the right edge. */}
-        <div className="flex flex-1 items-center justify-end gap-0.5">
+        {/* RIGHT wing: secondary actions, justified to the right edge.
+            Spaced like the transport cluster — these were the tightest
+            pack in the bar at 2px apart. */}
+        <div className="flex flex-1 items-center justify-end gap-2">
           {track ? <LikeDislikeButtons videoId={track.videoId} /> : null}
           <KaraokeButton />
           <LyricsPopover state={lyricsState} />

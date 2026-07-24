@@ -59,10 +59,16 @@ const PLAY_GLYPH = "size-[clamp(2.25rem,9vh,2.75rem)]";
 // room to spare on a 1920px-wide panel, so this costs nothing.
 const BTN_GAP = "gap-[clamp(0.75rem,2.5vw,2rem)]";
 
-// Type size for the two visible lyric lines. On the 440px-tall panel
+// Type size for the visible lyric lines. On the 440px-tall panel
 // 15vh ≈ 66px; on a normal display it caps at 60px.
 const LYRIC_FONT = "clamp(1.75rem,15vh,3.75rem)";
-const LYRIC_GAP = "clamp(0.25rem,1.5vh,0.75rem)";
+// 1.2x the original gap — the lines read as less of a block at this
+// size, and there's height to spare even with three of them.
+const LYRIC_GAP = "clamp(0.3rem,1.8vh,0.9rem)";
+
+/** Lyric lines visible at once: the one being sung, pinned to the top,
+ *  plus the two coming next. Drives the viewport height below. */
+const STAGE_LINES = 3;
 
 /** How long the tap-revealed chrome (title, artist, progress) stays up. */
 const CHROME_MS = 5000;
@@ -72,9 +78,9 @@ const CHROME_MS = 5000;
  *
  * Opened from the player bar (the button left of the lyrics-source mic).
  * Built for the Pi's 1920x440 touch panel, which is short enough that
- * every row has to earn its height: two big lyric lines (the one being
- * sung and the next) centered on screen, one row of finger-sized
- * transport buttons below. The track name and progress bar are hidden
+ * every row has to earn its height: three big lyric lines (the one
+ * being sung and the two coming next) centered on screen, one row of
+ * finger-sized transport buttons below. The track name and progress bar are hidden
  * and come back for 5s on a tap anywhere that isn't a control. No cover
  * art — this is for reading along, deliberately text-only.
  *
@@ -226,14 +232,20 @@ function KaraokeStage({ onClose }: { onClose: () => void }) {
         {/* Track info + progress — revealed on tap, then fades out. Sits
             above the lyrics rather than displacing them, so the lyric
             block never moves. */}
+        {/* Everything on ONE row — title/artist, then the scrubber
+            flanked by its times. Three lyric lines leave the strip only
+            ~45px of clearance, so a second row would land on top of the
+            line being sung. A 1920px-wide panel has the horizontal room
+            to spare. The descendant overrides fatten the slider track
+            and thumb into a touch-sized target. */}
         <div
           aria-hidden={!chrome}
           className={cn(
-            "absolute inset-x-0 top-0 z-10 flex flex-col items-center gap-1.5 bg-gradient-to-b from-black via-black/85 to-transparent px-[clamp(1rem,5vw,5rem)] pb-10 pt-[clamp(0.5rem,3vh,1.25rem)] transition-opacity duration-300",
+            "absolute inset-x-0 top-0 z-10 flex items-center gap-[clamp(0.75rem,2vw,2rem)] bg-gradient-to-b from-black via-black/85 to-transparent pb-6 pl-[clamp(1rem,3vw,3rem)] pr-[clamp(4.5rem,7vw,7rem)] pt-[clamp(0.5rem,2.5vh,1rem)] transition-opacity duration-300 [&_[data-slot=slider-thumb]]:size-5 [&_[data-slot=slider-track]]:h-2",
             chrome ? "opacity-100" : "pointer-events-none opacity-0",
           )}
         >
-          <div className="flex w-full max-w-4xl items-baseline justify-center gap-2 pr-16">
+          <div className="flex min-w-0 max-w-[38%] shrink items-baseline gap-2">
             <span className="min-w-0 truncate font-semibold text-[clamp(1rem,3.2vh,1.5rem)]">
               {track?.title ?? "Nothing playing"}
             </span>
@@ -243,11 +255,7 @@ function KaraokeStage({ onClose }: { onClose: () => void }) {
               </span>
             ) : null}
           </div>
-          {/* Times flank the bar instead of sitting under it: one row
-              instead of two on a screen that has none to spare. The
-              descendant overrides fatten the track and thumb into a
-              touch-sized target. */}
-          <div className="flex w-full max-w-4xl items-center gap-3 [&_[data-slot=slider-thumb]]:size-5 [&_[data-slot=slider-track]]:h-2">
+          <div className="flex min-w-0 flex-1 items-center gap-3">
             <span className="w-12 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
               {formatTime(scrub ?? position)}
             </span>
@@ -280,10 +288,10 @@ function KaraokeStage({ onClose }: { onClose: () => void }) {
           <XIcon />
         </Button>
 
-        {/* Lyrics — exactly two lines: the one being sung, pinned to the
-            top of the box, and the one coming next. `--lyric-font` drives
-            both the type size and this box's height, so the third line is
-            always clipped. */}
+        {/* Lyrics — exactly `STAGE_LINES`: the one being sung, pinned to
+            the top of the box, and the ones coming next. `--lyric-font`
+            drives both the type size and this box's height, so the line
+            after the last visible one is always clipped. */}
         <div
           className="flex min-h-0 flex-1 items-center justify-center overflow-hidden"
           style={
@@ -293,14 +301,15 @@ function KaraokeStage({ onClose }: { onClose: () => void }) {
             } as React.CSSProperties
           }
         >
-          {/* `overflow-hidden` is what enforces the two lines: the scroll
-              column inside carries a tall bottom padding (so the final
-              lyric can still scroll to the top), and under border-box
-              that padding floors its own height well past this box. */}
+          {/* `overflow-hidden` is what enforces the line count: the
+              scroll column inside carries a tall bottom padding (so the
+              final lyric can still scroll to the top), and under
+              border-box that padding floors its own height well past
+              this box. */}
           <div
             className="w-full overflow-hidden"
             style={{
-              height: `calc(2 * ${STAGE_LEADING} * var(--lyric-font) + var(--lyric-gap))`,
+              height: `calc(${STAGE_LINES} * ${STAGE_LEADING} * var(--lyric-font) + ${STAGE_LINES - 1} * var(--lyric-gap))`,
             }}
           >
             <LyricsBody state={lyricsState} display="stage" />

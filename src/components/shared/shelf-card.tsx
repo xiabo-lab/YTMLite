@@ -267,26 +267,45 @@ export function ShelfCard({ item, className }: Props) {
     );
   }
 
+  return (
+    <ShelfItemActivator item={item} className={cn(CARD_CLASS, className)}>
+      {body}
+    </ShelfItemActivator>
+  );
+}
+
+/**
+ * Wraps arbitrary content in whatever "opening this item" means for its
+ * kind: a router `<Link>` for artists / albums / playlists, a button
+ * that starts playback for songs and videos, plus the matching
+ * right-click context menu.
+ *
+ * Split out of `<ShelfCard>` so the cover-flow carousel can present the
+ * same items as bare covers (no title block) without re-deriving any of
+ * this routing. `category` tiles are excluded — they have a fixed pill
+ * layout of their own, handled above.
+ */
+export function ShelfItemActivator({
+  item,
+  className,
+  children,
+}: {
+  item: ShelfItem;
+  className?: string;
+  children: ReactNode;
+}) {
   if (item.kind === "artist") {
     return (
-      <Link
-        to="/artist/$id"
-        params={{ id: item.id }}
-        className={cn(CARD_CLASS, className)}
-      >
-        {body}
+      <Link to="/artist/$id" params={{ id: item.id }} className={className}>
+        {children}
       </Link>
     );
   }
 
   if (item.kind === "album") {
     return (
-      <Link
-        to="/album/$id"
-        params={{ id: item.id }}
-        className={cn(CARD_CLASS, className)}
-      >
-        {body}
+      <Link to="/album/$id" params={{ id: item.id }} className={className}>
+        {children}
       </Link>
     );
   }
@@ -304,22 +323,18 @@ export function ShelfCard({ item, className }: Props) {
         <TrackContextMenu item={asSong}>
           <button
             type="button"
-            className={cn(CARD_CLASS, className)}
+            className={className}
             onClick={() => usePlaybackStore.getState().playNow(asSong)}
           >
-            {body}
+            {children}
           </button>
         </TrackContextMenu>
       );
     }
     return (
       <PlaylistPinContextMenu item={item}>
-        <Link
-          to="/playlist/$id"
-          params={{ id: item.id }}
-          className={cn(CARD_CLASS, className)}
-        >
-          {body}
+        <Link to="/playlist/$id" params={{ id: item.id }} className={className}>
+          {children}
         </Link>
       </PlaylistPinContextMenu>
     );
@@ -330,10 +345,10 @@ export function ShelfCard({ item, className }: Props) {
     <TrackContextMenu item={item}>
       <button
         type="button"
-        className={cn(CARD_CLASS, className)}
+        className={className}
         onClick={() => usePlaybackStore.getState().playNow(item)}
       >
-        {body}
+        {children}
       </button>
     </TrackContextMenu>
   );

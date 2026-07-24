@@ -3,6 +3,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* The Pi's 1920x440 bar panel. Anything under this height has no room
+   for a stacked hero-above-list layout, so `short:` switches those
+   pages to side-by-side. Kept as a height query (not a device check)
+   so a resized desktop window behaves the same way. */
+@custom-variant short (@media (max-height: 560px));
+
 :root {
   /* Height of the custom title bar (see top-bar.tsx). Used by the
      floating sidebar / player CSS so they sit *under* the strip
@@ -195,6 +201,49 @@
 }
 
 @layer utilities {
+  /* Cover-flow stage. The perspective lives on the viewport so every
+     cover shares one vanishing point; without it each cover would get
+     its own and the fan would look bent.
+
+     Height is driven by viewport height so one shelf — heading, covers
+     and the title line under them — fits the Pi's 440px panel with the
+     player bar in place, while a normal window gets a larger stage.
+     `preserve-3d` is what lets the rotated covers actually overlap in
+     depth rather than being flattened into paint order. */
+  .cover-flow {
+    /* Sized so one shelf — heading, fan and title line — is about one
+       screenful on the 440px panel: big covers, scroll for the next
+       shelf. On a taller window it caps out and the shelves stack. */
+    --cover-size: clamp(6rem, 52vh, 18rem);
+    height: var(--cover-size);
+    perspective: 900px;
+    perspective-origin: 50% 50%;
+    transform-style: preserve-3d;
+    /* A vertical finger drag belongs to the page, not the carousel —
+       the browser pans, our pointer handlers take the horizontal. */
+    touch-action: pan-y;
+  }
+
+  .cover-flow-slot {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: var(--cover-size);
+    height: var(--cover-size);
+    transform-style: preserve-3d;
+    will-change: transform;
+    backface-visibility: hidden;
+    transition:
+      transform 380ms cubic-bezier(0.22, 0.61, 0.36, 1),
+      opacity 380ms linear;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cover-flow-slot {
+      transition-duration: 1ms;
+    }
+  }
+
   /* Soft fade at the left/right edges of a horizontal carousel so
      covers don't get clipped with a hard edge. Each side is
      independently toggled via the --fade-l / --fade-r custom

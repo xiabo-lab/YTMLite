@@ -25,6 +25,11 @@ export type EntityHeaderConfig = {
   onPlay?: () => void;
   onShuffle?: () => void;
   actions?: ReactNode;
+  /** Page controls that belong *with* the header rather than above the
+   *  content — the playlist's search box and sort menu. On a short
+   *  screen the header is a side column and these ride along in it;
+   *  in the tall layout they sit under the Play/Shuffle row. */
+  controls?: ReactNode;
 };
 
 type State = {

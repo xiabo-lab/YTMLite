@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { fetchHomeFeedPage } from "@/lib/innertube/home";
-import { ShelfCarousel } from "@/components/shared/shelf-carousel";
+import { CoverFlow } from "@/components/shared/cover-flow";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircleIcon, Loader2Icon } from "lucide-react";
 
@@ -46,8 +46,8 @@ function HomePage() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage, error]);
 
   return (
-    <div className="flex flex-col gap-8 px-6 pb-6 pt-3">
-      <div className="flex items-baseline justify-between gap-4">
+    <div className="flex flex-col gap-8 px-6 pb-6 pt-3 short:gap-4 short:px-4 short:pt-2">
+      <div className="flex items-baseline justify-between gap-4 short:hidden">
         <h1 className="text-3xl font-bold tracking-tight">Home</h1>
         {isFetching && !isLoading && !isFetchingNextPage ? (
           <span className="text-xs text-muted-foreground">Updating…</span>
@@ -76,7 +76,7 @@ function HomePage() {
       {isLoading ? <HomeSkeleton /> : null}
 
       {shelves.map((shelf) => (
-        <ShelfCarousel key={shelf.id} shelf={shelf} />
+        <CoverFlow key={shelf.id} shelf={shelf} />
       ))}
 
       {hasNextPage ? (

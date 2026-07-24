@@ -122,8 +122,8 @@ export function useLyricsView(track: QueueTrack | undefined): LyricsViewState {
 export type LyricsDisplay = "panel" | "stage";
 
 /** Line-height multiplier for stage text. Exported because the stage
- *  sizes its viewport to exactly two lines — `2 × font × leading + gap`
- *  — and both halves of that sum must agree. */
+ *  sizes its viewport to an exact line count — `n × font × leading +
+ *  (n−1) × gap` — and both halves of that sum must agree. */
 export const STAGE_LEADING = 1.3;
 
 export function LyricsBody({
@@ -187,9 +187,9 @@ const ACTIVE_LINE_VIEWPORT_RATIO = 0.36;
  *  Panel: the active line sits above center so upcoming lines stay
  *  visible — except line 0, which is pinned to the top so the column
  *  doesn't start half-empty.
- *  Stage: the viewport is exactly two lines tall (see `KaraokeStage`),
- *  so the active line is always pinned to the top and the line below it
- *  is the one upcoming. */
+ *  Stage: the viewport is a fixed number of lines tall (see
+ *  `KaraokeStage`), so the active line is always pinned to the top and
+ *  the lines below it are the ones upcoming. */
 function scrollTargetTop(
   container: HTMLElement,
   el: HTMLElement,
@@ -313,7 +313,7 @@ function TimedLyrics({
         ref={scrollRef}
         className={cn(
           "lyrics-no-scrollbar flex h-full flex-col overflow-y-auto pt-0",
-          // Stage: the viewport is only two lines tall, so the bottom
+          // Stage: the viewport is only a few lines tall, so the bottom
           // padding has to exceed it for the final line to reach the
           // top. `--lyric-gap` is set by the stage container.
           stage
@@ -322,7 +322,7 @@ function TimedLyrics({
           // Mask kicks in only after the karaoke has moved past the
           // first line — that way the first line stays crisp at the
           // top of the column while the song hasn't started or is on
-          // line 0. Skipped on the stage: with two visible lines the
+          // line 0. Skipped on the stage: with so few visible lines the
           // fade would eat the active line itself.
           !stage && activeIdx >= 1 && "lyrics-mask",
         )}
