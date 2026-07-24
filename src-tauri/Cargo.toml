@@ -1,6 +1,6 @@
 [package]
 name = "ytmlite"
-version = "0.1.4"
+version = "0.1.5"
 description = "YTMLite — fast, responsive YouTube Music desktop client"
 authors = ["George Shyshov"]
 license = "GPL-3.0-only"
