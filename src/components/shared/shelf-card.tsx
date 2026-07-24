@@ -280,10 +280,9 @@ export function ShelfCard({ item, className }: Props) {
  * that starts playback for songs and videos, plus the matching
  * right-click context menu.
  *
- * Split out of `<ShelfCard>` so the cover-flow carousel can present the
- * same items as bare covers (no title block) without re-deriving any of
- * this routing. `category` tiles are excluded — they have a fixed pill
- * layout of their own, handled above.
+ * Split out of `<ShelfCard>` so any other presentation of a shelf item
+ * can reuse the routing instead of re-deriving it. `category` tiles are
+ * excluded — they have a fixed pill layout of their own, handled above.
  */
 export function ShelfItemActivator({
   item,

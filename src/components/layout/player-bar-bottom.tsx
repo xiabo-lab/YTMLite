@@ -171,7 +171,7 @@ export function PlayerBarBottom() {
             the Pi's touch panel — adjacent 36px targets 4px apart are
             a mis-tap waiting to happen (skipping a track when you
             meant to pause). Same reasoning as the karaoke stage. */}
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-6">
           <Button
             variant="ghost"
             size="icon"
@@ -235,7 +235,7 @@ export function PlayerBarBottom() {
         {/* RIGHT wing: secondary actions, justified to the right edge.
             Spaced like the transport cluster — these were the tightest
             pack in the bar at 2px apart. */}
-        <div className="flex flex-1 items-center justify-end gap-2">
+        <div className="flex flex-1 items-center justify-end gap-4">
           {track ? <LikeDislikeButtons videoId={track.videoId} /> : null}
           <KaraokeButton />
           <LyricsPopover state={lyricsState} />

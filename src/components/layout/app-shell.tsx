@@ -19,7 +19,7 @@ import { KaraokeView } from "@/components/layout/karaoke-view";
 import { useKaraokeStore } from "@/lib/store/karaoke";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useTwoFingerScroll } from "@/hooks/use-two-finger-scroll";
+import { useDragScroll } from "@/hooks/use-drag-scroll";
 import { useAudioEngine } from "@/lib/audio-engine";
 import { useCacheAutoClean } from "@/lib/cache-cleanup";
 import { usePlaybackNotifications } from "@/lib/playback-notifications";
@@ -123,9 +123,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   // route changes so opening a playlist (or any other page) doesn't land
   // on whatever scrollTop the previous page happened to leave behind.
   const mainRef = useRef<HTMLElement>(null);
-  // Two fingers pan the feed on the Pi's touch panel — one finger never
-  // starts a scroll there, and reserving it keeps taps unambiguous.
-  useTwoFingerScroll(mainRef);
+  // Drag pans the feed: the Pi's webview doesn't scroll on touch by
+  // itself, and doesn't report touch events either — only pointers.
+  useDragScroll(mainRef);
   const pathname = useLocation({ select: (loc) => loc.pathname });
   useEffect(() => {
     if (mainRef.current) mainRef.current.scrollTop = 0;
