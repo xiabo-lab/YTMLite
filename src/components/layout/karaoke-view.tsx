@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import {
   Loader2Icon,
@@ -25,6 +25,7 @@ import { useKaraokeStore } from "@/lib/store/karaoke";
 import {
   LyricsBody,
   LyricsSourceButton,
+  STAGE_LEADING,
   useLyricsView,
 } from "@/components/layout/lyrics-view";
 import {
@@ -41,21 +42,41 @@ import { cn } from "@/lib/utils";
 const IS_TAURI =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 
-// Control sizes scale with viewport height via clamp(min, Nvh, max): at a
-// normal 1080p/1440p height every value hits its max (identical to a fixed
-// size), but on a 1920x440 "bar" display they shrink so the whole control
-// cluster still fits the short lower band instead of overflowing into the
-// lyrics.
-const SECONDARY_BTN = "size-[clamp(2.25rem,6.5vh,2.75rem)]";
-const PLAY_BTN = "size-[clamp(2.75rem,9vh,4rem)]";
+// Control sizes scale with viewport height via clamp(min, Nvh, max). The
+// minimums are the floor, not the target: this overlay is driven by a
+// finger on the Pi's touch panel, so every hit target stays at or above
+// ~44px even on the 440px-tall bar display, and the glyphs inside are
+// sized to match rather than left at the 16px button default.
+// `!` is load-bearing: the Button base style sizes bare glyphs with
+// `[&_svg:not([class*='size-'])]:size-4`, which outranks a plain
+// `[&_svg]` rule on specificity.
+const SECONDARY_BTN =
+  "size-[clamp(3.5rem,15vh,4rem)] [&_svg]:size-[clamp(1.75rem,7vh,2rem)]!";
+const PLAY_BTN = "size-[clamp(4.5rem,21vh,5.5rem)]";
+const PLAY_GLYPH = "size-[clamp(2.25rem,9vh,2.75rem)]";
+// Wide gutters between targets: a finger that lands slightly off should
+// hit nothing rather than the neighbouring button. There's horizontal
+// room to spare on a 1920px-wide panel, so this costs nothing.
+const BTN_GAP = "gap-[clamp(0.75rem,2.5vw,2rem)]";
+
+// Type size for the two visible lyric lines. On the 440px-tall panel
+// 15vh ≈ 66px; on a normal display it caps at 60px.
+const LYRIC_FONT = "clamp(1.75rem,15vh,3.75rem)";
+const LYRIC_GAP = "clamp(0.25rem,1.5vh,0.75rem)";
+
+/** How long the tap-revealed chrome (title, artist, progress) stays up. */
+const CHROME_MS = 5000;
 
 /**
  * Full-screen "karaoke" lyrics overlay.
  *
  * Opened from the player bar (the button left of the lyrics-source mic).
- * Lyrics fill the top of the screen; the track name, progress bar and
- * transport controls sit centered in the lower band. No cover art — this
- * is for reading along, deliberately text-only.
+ * Built for the Pi's 1920x440 touch panel, which is short enough that
+ * every row has to earn its height: two big lyric lines (the one being
+ * sung and the next) centered on screen, one row of finger-sized
+ * transport buttons below. The track name and progress bar are hidden
+ * and come back for 5s on a tap anywhere that isn't a control. No cover
+ * art — this is for reading along, deliberately text-only.
  *
  * Mounted once at the app-shell root so it can cover the whole window,
  * including the custom title bar. While open it also asks the OS window
@@ -154,6 +175,36 @@ function KaraokeStage({ onClose }: { onClose: () => void }) {
   const [scrub, setScrub] = useState<number | null>(null);
   const lyricsState = useLyricsView(track);
 
+  // Track title, artist and progress bar are hidden by default — on the
+  // 440px-tall panel that space is worth more as lyrics and finger room.
+  // A tap on empty stage brings them back for `CHROME_MS`.
+  const [chrome, setChrome] = useState(false);
+  const hideRef = useRef<number | null>(null);
+  const scrubRef = useRef(scrub);
+  scrubRef.current = scrub;
+
+  const revealChrome = useCallback(() => {
+    setChrome(true);
+    if (hideRef.current !== null) window.clearTimeout(hideRef.current);
+    const tick = () => {
+      // Never yank the progress bar out from under a finger that's
+      // still dragging it — wait out another interval instead.
+      if (scrubRef.current !== null) {
+        hideRef.current = window.setTimeout(tick, CHROME_MS);
+        return;
+      }
+      hideRef.current = null;
+      setChrome(false);
+    };
+    hideRef.current = window.setTimeout(tick, CHROME_MS);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (hideRef.current !== null) window.clearTimeout(hideRef.current);
+    };
+  }, []);
+
   const hasTrack = !!track;
   const loading = status === "loading" && playing;
   const artist =
@@ -161,41 +212,46 @@ function KaraokeStage({ onClose }: { onClose: () => void }) {
 
   return (
     <TooltipProvider delayDuration={600}>
-      <div className="fixed inset-0 z-50 flex flex-col bg-[#0a0a0a] text-foreground">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="Exit full screen"
-          onClick={onClose}
-          className="absolute right-4 top-4 z-10 text-muted-foreground hover:text-foreground"
+      <div
+        className="fixed inset-0 z-50 flex flex-col bg-[#0a0a0a] text-foreground"
+        // "Empty place" only: taps that land on a control (including a
+        // lyric line, which seeks) do their own job and don't also
+        // summon the chrome.
+        onPointerDown={(e) => {
+          const el = e.target as HTMLElement | null;
+          if (el?.closest("button,[data-slot=slider],[role=slider]")) return;
+          revealChrome();
+        }}
+      >
+        {/* Track info + progress — revealed on tap, then fades out. Sits
+            above the lyrics rather than displacing them, so the lyric
+            block never moves. */}
+        <div
+          aria-hidden={!chrome}
+          className={cn(
+            "absolute inset-x-0 top-0 z-10 flex flex-col items-center gap-1.5 bg-gradient-to-b from-black via-black/85 to-transparent px-[clamp(1rem,5vw,5rem)] pb-10 pt-[clamp(0.5rem,3vh,1.25rem)] transition-opacity duration-300",
+            chrome ? "opacity-100" : "pointer-events-none opacity-0",
+          )}
         >
-          <XIcon />
-        </Button>
-
-        {/* Lyrics — upper portion. flex-[3] gives them ~60% of the
-            height; the column scrolls internally and keeps the active
-            line centered. */}
-        <div className="flex min-h-0 flex-[3] flex-col items-center pt-[clamp(0.5rem,5vh,4rem)]">
-          <div className="flex h-full min-h-0 w-full max-w-4xl flex-col">
-            <LyricsBody state={lyricsState} display="stage" />
-          </div>
-        </div>
-
-        {/* Controls — centered in the lower band (~40% of the height). */}
-        <div className="flex flex-[2] shrink-0 items-center justify-center px-6">
-          <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-[clamp(0.5rem,2.5vh,1.25rem)]">
-            <div className="flex flex-col items-center text-center">
-              <span className="font-semibold text-[clamp(1.05rem,3.5vh,1.875rem)]">
-                {track?.title ?? "Nothing playing"}
+          <div className="flex w-full max-w-4xl items-baseline justify-center gap-2 pr-16">
+            <span className="min-w-0 truncate font-semibold text-[clamp(1rem,3.2vh,1.5rem)]">
+              {track?.title ?? "Nothing playing"}
+            </span>
+            {artist ? (
+              <span className="min-w-0 truncate text-[clamp(0.85rem,2.4vh,1.125rem)] text-muted-foreground">
+                — {artist}
               </span>
-              {artist ? (
-                <span className="mt-1.5 text-[clamp(0.85rem,2.2vh,1.125rem)] text-muted-foreground">
-                  {artist}
-                </span>
-              ) : null}
-            </div>
-
-            <div className="flex w-full flex-col gap-2">
+            ) : null}
+          </div>
+          {/* Times flank the bar instead of sitting under it: one row
+              instead of two on a screen that has none to spare. The
+              descendant overrides fatten the track and thumb into a
+              touch-sized target. */}
+          <div className="flex w-full max-w-4xl items-center gap-3 [&_[data-slot=slider-thumb]]:size-5 [&_[data-slot=slider-track]]:h-2">
+            <span className="w-12 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
+              {formatTime(scrub ?? position)}
+            </span>
+            <div className="min-w-0 flex-1">
               <ProgressSlider
                 position={position}
                 duration={duration}
@@ -204,15 +260,58 @@ function KaraokeStage({ onClose }: { onClose: () => void }) {
                 seek={seek}
                 disabled={!hasTrack || duration <= 0}
               />
-              <div className="flex justify-between text-sm tabular-nums text-muted-foreground">
-                <span>{formatTime(scrub ?? position)}</span>
-                <span>{formatTime(duration)}</span>
-              </div>
             </div>
+            <span className="w-12 shrink-0 text-sm tabular-nums text-muted-foreground">
+              {formatTime(duration)}
+            </span>
+          </div>
+        </div>
 
-            <div className="flex items-center justify-center gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Exit full screen"
+          onClick={onClose}
+          className={cn(
+            SECONDARY_BTN,
+            "absolute right-3 top-3 z-20 text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <XIcon />
+        </Button>
+
+        {/* Lyrics — exactly two lines: the one being sung, pinned to the
+            top of the box, and the one coming next. `--lyric-font` drives
+            both the type size and this box's height, so the third line is
+            always clipped. */}
+        <div
+          className="flex min-h-0 flex-1 items-center justify-center overflow-hidden"
+          style={
+            {
+              "--lyric-font": LYRIC_FONT,
+              "--lyric-gap": LYRIC_GAP,
+            } as React.CSSProperties
+          }
+        >
+          {/* `overflow-hidden` is what enforces the two lines: the scroll
+              column inside carries a tall bottom padding (so the final
+              lyric can still scroll to the top), and under border-box
+              that padding floors its own height well past this box. */}
+          <div
+            className="w-full overflow-hidden"
+            style={{
+              height: `calc(2 * ${STAGE_LEADING} * var(--lyric-font) + var(--lyric-gap))`,
+            }}
+          >
+            <LyricsBody state={lyricsState} display="stage" />
+          </div>
+        </div>
+
+        {/* Transport — always visible; this is what a finger reaches for. */}
+        <div className="shrink-0 px-6 pb-[clamp(0.5rem,2.5vh,1.25rem)]">
+          <div className={cn("flex items-center justify-center", BTN_GAP)}>
               <LyricsSourceButton state={lyricsState} className={SECONDARY_BTN} />
-              <QueuePopover />
+              <QueuePopover className={SECONDARY_BTN} />
               <Button
                 variant="ghost"
                 size="icon"
@@ -244,11 +343,11 @@ function KaraokeStage({ onClose }: { onClose: () => void }) {
                 )}
               >
                 {loading ? (
-                  <Loader2Icon className="animate-spin" />
+                  <Loader2Icon className={cn(PLAY_GLYPH, "animate-spin")} />
                 ) : playing ? (
-                  <PauseIcon className="size-7 fill-current" />
+                  <PauseIcon className={cn(PLAY_GLYPH, "fill-current")} />
                 ) : (
-                  <PlayIcon className="size-7 fill-current" />
+                  <PlayIcon className={cn(PLAY_GLYPH, "fill-current")} />
                 )}
               </Button>
               <Button
@@ -276,9 +375,26 @@ function KaraokeStage({ onClose }: { onClose: () => void }) {
                 </TooltipTrigger>
                 <TooltipContent>{repeatLabel(repeat)}</TooltipContent>
               </Tooltip>
-              <VolumeControl direction="vertical" />
-            </div>
+              <VolumeControl direction="vertical" className={SECONDARY_BTN} />
           </div>
+        </div>
+
+        {/* Hairline at the screen edge: the only trace of progress left
+            while the chrome is hidden, and it costs 3px. Fades out when
+            the real bar comes up so the two never disagree. */}
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-x-0 bottom-0 h-[3px] bg-white/10 transition-opacity duration-300",
+            chrome ? "opacity-0" : "opacity-100",
+          )}
+        >
+          <div
+            className="h-full bg-brand"
+            style={{
+              width: `${duration > 0 ? Math.min(100, ((scrub ?? position) / duration) * 100) : 0}%`,
+            }}
+          />
         </div>
       </div>
     </TooltipProvider>

@@ -171,8 +171,12 @@ export function ProgressSlider({
 
 export function VolumeControl({
   direction = "horizontal",
+  className,
 }: {
   direction?: "horizontal" | "vertical";
+  /** Applied to the speaker button — lets the karaoke stage grow it to
+   *  a touch-sized target. */
+  className?: string;
 }) {
   const { volume, muted } = usePlaybackStore(
     useShallow((s) => ({ volume: s.volume, muted: s.muted })),
@@ -230,6 +234,7 @@ export function VolumeControl({
         size="icon"
         aria-label={muted ? "Unmute" : "Mute"}
         onClick={toggleMute}
+        className={className}
       >
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span

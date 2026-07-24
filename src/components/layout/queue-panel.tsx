@@ -328,13 +328,18 @@ export function QueueToggleButton({
  * symmetrically around it (Radix's collision detection slides it left
  * if the right edge would overflow the viewport). Fixed 28rem×28rem.
  */
-export function QueuePopover() {
+export function QueuePopover({ className }: { className?: string }) {
   return (
     <Popover>
       <Tooltip>
         <TooltipTrigger asChild>
           <PopoverTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="Queue">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Queue"
+              className={className}
+            >
               <ListMusicIcon />
             </Button>
           </PopoverTrigger>
@@ -345,7 +350,10 @@ export function QueuePopover() {
         align="center"
         side="top"
         sideOffset={12}
-        className="flex h-[28rem] w-[28rem] flex-col p-0"
+        // Height caps to the viewport: at 28rem the panel is taller than
+        // the Pi's 440px screen, which clipped the list instead of
+        // letting it scroll.
+        className="flex h-[min(28rem,80vh)] w-[28rem] flex-col p-0"
       >
         <QueueBody />
       </PopoverContent>

@@ -121,6 +121,11 @@ export function useLyricsView(track: QueueTrack | undefined): LyricsViewState {
  */
 export type LyricsDisplay = "panel" | "stage";
 
+/** Line-height multiplier for stage text. Exported because the stage
+ *  sizes its viewport to exactly two lines — `2 × font × leading + gap`
+ *  — and both halves of that sum must agree. */
+export const STAGE_LEADING = 1.3;
+
 export function LyricsBody({
   state,
   display = "panel",
@@ -131,7 +136,7 @@ export function LyricsBody({
   if (!state.hasTrack) return null;
   const notice =
     display === "stage"
-      ? "text-center text-xl text-muted-foreground"
+      ? "text-center text-2xl text-muted-foreground"
       : "px-4 py-2 text-sm text-muted-foreground";
   if (state.isLoading && !state.active) {
     return <p className={notice}>Loading lyrics…</p>;
@@ -176,6 +181,32 @@ function findActiveIdx(lines: TimedLine[], position: number): number {
  *  as a fraction of the visible height. 0.5 = perfectly centered;
  *  smaller pushes the active line up and reveals more upcoming text. */
 const ACTIVE_LINE_VIEWPORT_RATIO = 0.36;
+
+/** Scroll offset that puts `el` (the active line) where it belongs.
+ *
+ *  Panel: the active line sits above center so upcoming lines stay
+ *  visible — except line 0, which is pinned to the top so the column
+ *  doesn't start half-empty.
+ *  Stage: the viewport is exactly two lines tall (see `KaraokeStage`),
+ *  so the active line is always pinned to the top and the line below it
+ *  is the one upcoming. */
+function scrollTargetTop(
+  container: HTMLElement,
+  el: HTMLElement,
+  idx: number,
+  stage: boolean,
+): number {
+  // getBoundingClientRect avoids depending on offsetParent.
+  const cRect = container.getBoundingClientRect();
+  const eRect = el.getBoundingClientRect();
+  const elTopWithinContent = eRect.top - cRect.top + container.scrollTop;
+  const offset =
+    stage || idx === 0
+      ? 0
+      : container.clientHeight * ACTIVE_LINE_VIEWPORT_RATIO -
+        el.clientHeight / 2;
+  return Math.max(0, elTopWithinContent - offset);
+}
 
 /** Duration of the auto-scroll that re-centers the active line.
  *  Native `scrollTo({ behavior: "smooth" })` is non-configurable in
@@ -235,18 +266,10 @@ function TimedLyrics({
       container.scrollTop = 0;
       return;
     }
-    const cRect = container.getBoundingClientRect();
-    const eRect = el.getBoundingClientRect();
-    const elTopWithinContent = eRect.top - cRect.top + container.scrollTop;
-    const target =
-      idx === 0
-        ? 0
-        : container.clientHeight * ACTIVE_LINE_VIEWPORT_RATIO -
-          el.clientHeight / 2;
-    container.scrollTop = Math.max(0, elTopWithinContent - target);
+    container.scrollTop = scrollTargetTop(container, el, idx, stage);
     // Re-snap when the timing offset changes so dragging the slider
     // re-aligns the active line immediately.
-  }, [lines, offset]);
+  }, [lines, offset, stage]);
 
   useEffect(() => {
     if (activeIdx === prevActiveRef.current) return;
@@ -258,21 +281,7 @@ function TimedLyrics({
       `[data-line-idx="${activeIdx}"]`,
     );
     if (!el) return;
-    // Position the active line above center so more upcoming lines stay
-    // visible. getBoundingClientRect avoids depending on offsetParent.
-    const cRect = container.getBoundingClientRect();
-    const eRect = el.getBoundingClientRect();
-    const elTopWithinContent =
-      eRect.top - cRect.top + container.scrollTop;
-    // The very first line is treated as a special case: we pin it to
-    // the top of the viewport instead of the usual ~36% position. For
-    // any later line, the active-line-above-center rule applies.
-    const target =
-      activeIdx === 0
-        ? 0
-        : container.clientHeight * ACTIVE_LINE_VIEWPORT_RATIO -
-          el.clientHeight / 2;
-    const targetTop = Math.max(0, elTopWithinContent - target);
+    const targetTop = scrollTargetTop(container, el, activeIdx, stage);
 
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     const startTop = container.scrollTop;
@@ -290,7 +299,7 @@ function TimedLyrics({
       }
     };
     rafRef.current = requestAnimationFrame(step);
-  }, [activeIdx]);
+  }, [activeIdx, stage]);
 
   useEffect(() => {
     return () => {
@@ -304,12 +313,18 @@ function TimedLyrics({
         ref={scrollRef}
         className={cn(
           "lyrics-no-scrollbar flex h-full flex-col overflow-y-auto pt-0",
-          stage ? "gap-3 px-6 pb-[40vh]" : "gap-1 px-1 pb-16",
+          // Stage: the viewport is only two lines tall, so the bottom
+          // padding has to exceed it for the final line to reach the
+          // top. `--lyric-gap` is set by the stage container.
+          stage
+            ? "gap-[var(--lyric-gap,0.5rem)] px-8 pb-[60vh]"
+            : "gap-1 px-1 pb-16",
           // Mask kicks in only after the karaoke has moved past the
           // first line — that way the first line stays crisp at the
           // top of the column while the song hasn't started or is on
-          // line 0.
-          activeIdx >= 1 && "lyrics-mask",
+          // line 0. Skipped on the stage: with two visible lines the
+          // fade would eat the active line itself.
+          !stage && activeIdx >= 1 && "lyrics-mask",
         )}
       >
         {lines.map((line, i) => {
@@ -321,6 +336,14 @@ function TimedLyrics({
               type="button"
               data-line-idx={i}
               onClick={() => seek(line.start)}
+              // Stage type size comes from the container's `--lyric-font`
+              // so the two-line viewport height can be derived from the
+              // exact same value (see `KaraokeStage`).
+              style={
+                stage
+                  ? { fontSize: "var(--lyric-font)", lineHeight: STAGE_LEADING }
+                  : undefined
+              }
               className={cn(
                 // Same font-size on every line so the active line can't
                 // grow into a second row and shove neighbours around.
@@ -338,12 +361,11 @@ function TimedLyrics({
                 // browser has a defined start AND end to interpolate.
                 "lyrics-line cursor-pointer rounded-md font-[650] leading-snug transition-[scale,color] duration-[1260ms] ease-in-out hover:bg-black/30",
                 // Stage (full-screen karaoke): large, centered text that
-                // scales from its center. The size tracks viewport height
-                // (clamp) so lines stay big on a tall screen yet a few
-                // still fit on a 1920x440 bar display. Panel: compact,
-                // left-aligned.
+                // scales from its center. No vertical padding — the
+                // two-line viewport is measured from font-size × leading
+                // alone. Panel: compact, left-aligned.
                 stage
-                  ? "origin-center px-4 py-1.5 text-center text-[clamp(1.25rem,4.5vh,2.25rem)] leading-relaxed"
+                  ? "origin-center px-4 py-0 text-center"
                   : "origin-left px-2 py-1 text-left text-lg",
                 isActive
                   ? stage
@@ -392,13 +414,19 @@ function PlainLyrics({
   text: string;
   display?: LyricsDisplay;
 }) {
+  const stage = display === "stage";
   return (
     <div
+      style={
+        stage
+          ? { fontSize: "var(--lyric-font)", lineHeight: STAGE_LEADING }
+          : undefined
+      }
       className={cn(
-        "lyrics-mask app-scroll h-full overflow-y-auto whitespace-pre-wrap pt-0 font-medium leading-relaxed text-foreground/90",
-        display === "stage"
-          ? "px-6 pb-[30vh] text-center text-[clamp(1.1rem,4vh,1.875rem)]"
-          : "px-2 pb-12 text-lg",
+        "app-scroll h-full overflow-y-auto whitespace-pre-wrap pt-0 font-medium text-foreground/90",
+        stage
+          ? "lyrics-no-scrollbar px-8 pb-[30vh] text-center"
+          : "lyrics-mask px-2 pb-12 text-lg leading-relaxed",
       )}
     >
       {text}

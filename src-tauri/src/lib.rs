@@ -624,6 +624,63 @@ async fn cleanup_login_artifacts(app: &tauri::AppHandle) {
     let _ = tokio::fs::remove_file(cache.join(".cookies")).await;
 }
 
+/// Login-window size (logical px), fitted to the display it opens on.
+///
+/// A fixed 500x720 window hangs half off the Pi's 1920x440 panel: the
+/// bottom of Google's sign-in form — "Next", "Create account", the
+/// consent buttons — ends up below the screen edge with no way to reach
+/// it, since the page can't scroll what the window itself is showing.
+///
+/// So: clamp the height to the display, and when the display is short,
+/// go wide instead. Google's sign-in switches to its two-column layout
+/// on a wide viewport, which is considerably shorter than the stacked
+/// one — the difference between a form that fits in 380px and one that
+/// doesn't. The third return value is a page zoom that buys back the
+/// remaining vertical shortfall.
+fn login_window_size(app: &tauri::AppHandle) -> (f64, f64, f64) {
+    const DEFAULT_W: f64 = 500.0;
+    const DEFAULT_H: f64 = 720.0;
+    // Room for the window's own title bar plus any panel/taskbar. The
+    // monitor size we get is the whole display, not the work area.
+    const MARGIN: f64 = 72.0;
+
+    // Ask the main window which display it's on — the login window opens
+    // centered on the same one. Falls back to the primary monitor.
+    let monitor = app.get_webview_window("main").and_then(|w| {
+        w.current_monitor()
+            .ok()
+            .flatten()
+            .or_else(|| w.primary_monitor().ok().flatten())
+    });
+    let Some(monitor) = monitor else {
+        return (DEFAULT_W, DEFAULT_H, 1.0);
+    };
+    let scale = monitor.scale_factor();
+    let size = monitor.size();
+    let (screen_w, screen_h) = (
+        size.width as f64 / scale,
+        size.height as f64 / scale,
+    );
+
+    let h = DEFAULT_H.min((screen_h - MARGIN).max(320.0));
+    let short = h < 620.0;
+    let w = if short {
+        // Short screen — trade the height we can't have for width.
+        1024.0f64.min((screen_w - MARGIN).max(360.0))
+    } else {
+        DEFAULT_W.min((screen_w - MARGIN).max(360.0))
+    };
+    // Scale the page down toward the ~560 CSS px the wide sign-in layout
+    // wants, but never past 0.6 — below that the form is legible in
+    // theory and unusable in practice.
+    let zoom = if short {
+        (h / 560.0).clamp(0.6, 1.0)
+    } else {
+        1.0
+    };
+    (w, h, zoom)
+}
+
 /// Open an in-app Google sign-in window in an isolated WebView profile
 /// and add the resulting cookies as a new account. Polls the (fresh)
 /// webview cookie store until YouTube auth cookies appear, encrypts
@@ -691,10 +748,13 @@ async fn start_login(app: tauri::AppHandle) -> Result<(), String> {
         .parse::<tauri::Url>()
         .map_err(|e| e.to_string())?;
 
+    let (login_w, login_h, login_zoom) = login_window_size(&app);
     let win = WebviewWindowBuilder::new(&app, "login", WebviewUrl::External(url))
         .title("Sign in - accounts.google.com")
-        .inner_size(500.0, 720.0)
-        .min_inner_size(420.0, 560.0)
+        .inner_size(login_w, login_h)
+        // Floor only — the real size is fitted to the display above, and
+        // a minimum taller than the screen would undo that fit.
+        .min_inner_size(380.0f64.min(login_w), 300.0f64.min(login_h))
         .center()
         .data_directory(webview_data.clone())
         .user_agent(YT_LOGIN_UA)
@@ -708,6 +768,14 @@ async fn start_login(app: tauri::AppHandle) -> Result<(), String> {
         })
         .build()
         .map_err(|e| e.to_string())?;
+
+    if login_zoom < 1.0 {
+        // Best-effort: unsupported on some webview backends, and a
+        // full-size page is still better than no login window.
+        if let Err(e) = win.set_zoom(login_zoom) {
+            eprintln!("[login] set_zoom({login_zoom}): {e}");
+        }
+    }
 
     let app_poll = app.clone();
     // Failure paths wipe the whole account dir (profile + jar); on
