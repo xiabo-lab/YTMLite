@@ -1,11 +1,25 @@
 import { useEffect } from "react";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { toast } from "sonner";
 import { platformCaps } from "@/lib/platform";
 import { useUpdateStore } from "@/lib/store/update";
 
 const TOAST_ID = "app-update";
+
+/** Shape of `deb_update_check`'s result (see src-tauri/src/deb_update.rs). */
+type DebUpdate = { version: string; size: number };
+
+/**
+ * Platforms where Tauri's updater can't install (Linux ships a .deb)
+ * fall back to the Rust `deb_update_*` commands, which do the same job
+ * through apt. Same banner, same phases — only the install call differs.
+ */
+function usesDebUpdater(): boolean {
+  return !platformCaps().inAppUpdates && platformCaps().os === "linux";
+}
 
 // One check-or-install flow at a time: a second trigger while a download
 // is running must not start a parallel downloadAndInstall.
@@ -29,10 +43,12 @@ export async function checkForUpdates({ silent }: { silent: boolean }): Promise<
     if (!silent) useUpdateStore.getState().setAvailable("9.9.9", null);
     return;
   }
-  // Tauri's updater can only install AppImage bundles on Linux, and the
-  // Raspberry Pi build ships a .deb — so an "update available" banner
-  // there would lead to an install that always fails. The package
-  // manager owns updates on that platform instead.
+  if (usesDebUpdater()) {
+    await checkForDebUpdate({ silent });
+    return;
+  }
+  // Any other platform Tauri's updater can't install on: say so rather
+  // than showing a banner that leads to a failing install.
   if (!platformCaps().inAppUpdates) {
     if (!silent) {
       toast.info("Updates are managed by your package manager on this platform.", {
@@ -75,12 +91,13 @@ export async function checkForUpdates({ silent }: { silent: boolean }): Promise<
  * simulated download.
  */
 export async function beginUpdateInstall(): Promise<void> {
-  const { phase, handle } = useUpdateStore.getState();
+  const { phase, handle, viaDeb } = useUpdateStore.getState();
   if (phase !== "available" && phase !== "error") return;
   if (busy) return;
   busy = true;
   try {
-    if (handle) await runRealInstall(handle);
+    if (viaDeb) await runDebInstall();
+    else if (handle) await runRealInstall(handle);
     else await runMockInstall();
   } finally {
     busy = false;
@@ -93,7 +110,9 @@ export async function beginUpdateInstall(): Promise<void> {
  * so it just clears the flow and says so.
  */
 export function restartToUpdate(): void {
-  if (useUpdateStore.getState().handle) {
+  const { handle, viaDeb } = useUpdateStore.getState();
+  // apt has already replaced the binary on disk; relaunching execs it.
+  if (handle || viaDeb) {
     void relaunch();
   } else {
     useUpdateStore.getState().reset();
@@ -101,6 +120,69 @@ export function restartToUpdate(): void {
       id: TOAST_ID,
       duration: 4000,
     });
+  }
+}
+
+/**
+ * The .deb path's half of `checkForUpdates`. Rust does the version
+ * comparison against its own `CARGO_PKG_VERSION`, so a result here
+ * always means "newer than what's running".
+ */
+async function checkForDebUpdate({ silent }: { silent: boolean }): Promise<void> {
+  if (busy) return;
+  busy = true;
+  try {
+    let update: DebUpdate | null;
+    try {
+      update = await invoke<DebUpdate | null>("deb_update_check");
+    } catch (e) {
+      if (!silent) {
+        toast.error("Couldn't check for updates", {
+          id: TOAST_ID,
+          description: String(e),
+        });
+      }
+      return;
+    }
+    if (!update) {
+      if (!silent) toast.success("You're on the latest version.", { id: TOAST_ID });
+      return;
+    }
+    useUpdateStore.getState().setAvailable(update.version, null, true);
+  } finally {
+    busy = false;
+  }
+}
+
+/**
+ * Download + `apt-get install` the new package, with the Rust side
+ * streaming byte counts back so the banner shows a real bar.
+ */
+async function runDebInstall(): Promise<void> {
+  const store = useUpdateStore.getState();
+  store.setDownloading(0);
+
+  const unlisten = await listen<{ downloaded: number; total: number }>(
+    "deb-update-progress",
+    ({ payload }) => {
+      const pct =
+        payload.total > 0
+          ? Math.round((payload.downloaded / payload.total) * 100)
+          : null;
+      store.setDownloading(pct);
+    },
+  );
+
+  try {
+    // Rust flips to installing only after the download completes; the
+    // apt step itself has no progress to report.
+    await invoke<string>("deb_update_install");
+    store.setInstalling();
+    store.setReady();
+  } catch (e) {
+    store.setError(String(e));
+  } finally {
+    unlisten();
   }
 }
 

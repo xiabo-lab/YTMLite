@@ -25,6 +25,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::ServeFile;
 
 mod appid;
+mod deb_update;
 mod media;
 mod platform;
 mod secure_store;
@@ -3024,6 +3025,8 @@ pub fn run() {
             platform::platform_caps,
             media::media_update,
             media::media_clear,
+            deb_update::deb_update_check,
+            deb_update::deb_update_install,
         ])
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {

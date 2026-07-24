@@ -13,7 +13,7 @@
   /* Height of the custom title bar (see top-bar.tsx). Used by the
      floating sidebar / player CSS so they sit *under* the strip
      instead of overlapping the window-control buttons. */
-  --titlebar-h: 36px;
+  --titlebar-h: 60px;
 
   /* YouTube brand red */
   --brand: #FA1F3E;

@@ -27,8 +27,14 @@ import { AboutDialog } from "@/components/layout/about-dialog";
 // Caption-bar nav buttons get just an icon-color shift on hover —
 // the default ghost-button square highlight competes visually with
 // the Windows-style min/max/close cells on the right side of the bar.
+//
+// 56px, i.e. four times the tap area of the 28px they used to be, with
+// the glyph scaled to match. `!` is load-bearing on the glyph size: the
+// Button base style sizes bare SVGs with
+// `[&_svg:not([class*='size-'])]:size-4`, which outranks a plain
+// `[&_svg]` rule on specificity.
 const NAV_BTN_CLS =
-  "size-7 text-foreground/65 hover:bg-transparent hover:text-foreground dark:hover:bg-transparent";
+  "size-14 [&_svg]:size-7! text-foreground/65 hover:bg-transparent hover:text-foreground dark:hover:bg-transparent";
 
 // Plain-vite dev in a regular browser has no Tauri backend —
 // `getCurrentWindow()` throws on missing `__TAURI_INTERNALS__`, which
@@ -93,7 +99,10 @@ export function TopBar() {
     <>
       <header
         data-tauri-drag-region
-        className="relative z-30 flex h-9 shrink-0 select-none items-center"
+        // 60px tall to fit the 56px nav buttons. Keep in step with
+        // `--titlebar-h` in index.css — the floating sidebar offsets
+        // itself by that variable.
+        className="relative z-30 flex h-15 shrink-0 select-none items-center"
       >
         {/* Absolutely centered on the window, so the cluster sits in the
             middle regardless of how wide the caption buttons are. */}

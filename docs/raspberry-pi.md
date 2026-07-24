@@ -101,12 +101,17 @@ a cloned image, or a backup. It does **not** defend against code running
 as your user, because the salt sits next to the ciphertext. Same boundary
 DPAPI draws — just with a more obvious key.
 
-**No in-app updates — use `scripts/update-pi.sh` instead.**
-Tauri's updater can only install AppImage bundles on Linux, and this ships
-a `.deb` so it stays integrated with apt and the desktop menu. The update
-banner and startup check are therefore disabled in the UI.
+**In-app updates work, but not through Tauri's updater.** That plugin can
+only install AppImage bundles on Linux, and this ships a `.deb` so it
+stays integrated with apt and the desktop menu. The app therefore uses
+its own path on Linux (`src-tauri/src/deb_update.rs`): *⋯ → Check for
+Updates* reads the newest published GitHub release, and the update banner
+downloads the `.deb` and installs it with `sudo -n apt-get install`,
+falling back to `pkexec` if passwordless sudo isn't configured. If
+neither can elevate, the error names the command to run by hand.
 
-Updating is a one-liner instead:
+The script does the same job from a terminal — useful over SSH, or when
+the app won't start:
 
 ```bash
 bash scripts/update-pi.sh            # install the latest release

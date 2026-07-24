@@ -23,9 +23,13 @@ pub struct Caps {
     /// row. We surface a single account instead of a broken multi.
     #[serde(rename = "multiAccount")]
     pub multi_account: bool,
-    /// Whether the in-app updater can install a new version. Tauri's
-    /// updater only supports AppImage on Linux; we ship a `.deb`, which
-    /// updates through `apt`/`dpkg` instead.
+    /// Whether **Tauri's updater plugin** can install a new version.
+    /// It only supports AppImage on Linux and we ship a `.deb`.
+    ///
+    /// This being false no longer means "no in-app updates": on Linux
+    /// the frontend falls back to the `deb_update_*` commands, which
+    /// fetch the release and hand the package to apt. See
+    /// `deb_update.rs` and `src/lib/updater.ts`.
     #[serde(rename = "inAppUpdates")]
     pub in_app_updates: bool,
     /// Whether left-clicking the tray icon raises the window. Linux tray

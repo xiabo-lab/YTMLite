@@ -26,8 +26,18 @@ type State = {
    * the restart action branch on this to decide real vs simulated.
    */
   handle: Update | null;
+  /**
+   * True when this update installs through the Debian package path
+   * (`deb_update_*` in Rust) rather than Tauri's updater plugin. Both
+   * drive the same banner; only the install call differs.
+   */
+  viaDeb: boolean;
 
-  setAvailable: (version: string, handle: Update | null) => void;
+  setAvailable: (
+    version: string,
+    handle: Update | null,
+    viaDeb?: boolean,
+  ) => void;
   setDownloading: (progress: number | null) => void;
   setInstalling: () => void;
   setReady: () => void;
@@ -41,8 +51,16 @@ export const useUpdateStore = create<State>()((set) => ({
   progress: null,
   error: null,
   handle: null,
-  setAvailable: (version, handle) =>
-    set({ phase: "available", version, handle, progress: null, error: null }),
+  viaDeb: false,
+  setAvailable: (version, handle, viaDeb = false) =>
+    set({
+      phase: "available",
+      version,
+      handle,
+      viaDeb,
+      progress: null,
+      error: null,
+    }),
   setDownloading: (progress) => set({ phase: "downloading", progress }),
   setInstalling: () => set({ phase: "installing", progress: 100 }),
   setReady: () => set({ phase: "ready", progress: 100 }),
@@ -54,5 +72,6 @@ export const useUpdateStore = create<State>()((set) => ({
       progress: null,
       error: null,
       handle: null,
+      viaDeb: false,
     }),
 }));
