@@ -27,12 +27,19 @@ type State = {
    *  holds the lyrics back to match delayed audio, negative pushes them
    *  ahead. See `lyrics-view.tsx`. */
   lyricsOffsetSec: number;
+  /** Auto-play the last-played track when the app launches. Off by
+   *  default so a fresh launch stays silent (the store already restores
+   *  the queue + index — this just decides whether to press play). The
+   *  track resumes from its start, not from where it was interrupted.
+   *  Aimed at the in-car Pi, which boots straight into the app. */
+  resumeOnStartup: boolean;
   setCloseAction: (v: CloseButtonAction) => void;
   setCacheAutoClean: (v: CacheAutoCleanPeriod) => void;
   markCacheCleaned: () => void;
   setBackground: (v: BackgroundMode) => void;
   setPlaybackNotifications: (v: boolean) => void;
   setLyricsOffsetSec: (v: number) => void;
+  setResumeOnStartup: (v: boolean) => void;
 };
 
 /**
@@ -50,6 +57,7 @@ export const useSettingsStore = create<State>()(
       background: "ambient",
       playbackNotifications: false,
       lyricsOffsetSec: 0,
+      resumeOnStartup: false,
       setCloseAction: (closeAction) => set({ closeAction }),
       setCacheAutoClean: (cacheAutoClean) => set({ cacheAutoClean }),
       markCacheCleaned: () => set({ lastCacheCleanAt: Date.now() }),
@@ -62,6 +70,7 @@ export const useSettingsStore = create<State>()(
         set({
           lyricsOffsetSec: Math.round(Math.min(3, Math.max(-3, v)) * 10) / 10,
         }),
+      setResumeOnStartup: (resumeOnStartup) => set({ resumeOnStartup }),
     }),
     { name: "ytm-settings" },
   ),

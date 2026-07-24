@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type SettingsTab = "theme" | "storage" | "lyrics";
+export type SettingsTab = "theme" | "playback" | "storage" | "lyrics";
 
 type State = {
   open: boolean;

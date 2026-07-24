@@ -1,6 +1,7 @@
 import {
   DatabaseIcon,
   PaletteIcon,
+  PlayIcon,
   TimerIcon,
   XIcon,
   type LucideIcon,
@@ -13,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ThemeTab } from "@/components/settings/theme-tab";
+import { PlaybackTab } from "@/components/settings/playback-tab";
 import { StorageTab } from "@/components/settings/storage-tab";
 import { LyricsTimingTab } from "@/components/settings/lyrics-timing-tab";
 import {
@@ -23,6 +25,7 @@ import { cn } from "@/lib/utils";
 
 const TABS: { id: SettingsTab; label: string; icon: LucideIcon }[] = [
   { id: "theme", label: "Theme", icon: PaletteIcon },
+  { id: "playback", label: "Playback", icon: PlayIcon },
   { id: "storage", label: "Storage", icon: DatabaseIcon },
   { id: "lyrics", label: "Lyrics Timing", icon: TimerIcon },
 ];
@@ -127,6 +130,7 @@ export function SettingsDialog() {
               back up). */}
           <div className="app-scroll min-w-0 flex-1 overflow-y-auto px-5 pb-5 [overflow-anchor:none]">
             {tab === "theme" && <ThemeTab />}
+            {tab === "playback" && <PlaybackTab />}
             {tab === "storage" && <StorageTab />}
             {tab === "lyrics" && <LyricsTimingTab />}
           </div>

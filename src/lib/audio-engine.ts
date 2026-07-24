@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
+import { useQueryClient } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { fetchRadio } from "@/lib/innertube/radio";
+import { prefetchLyrics } from "@/lib/lyrics/sources";
 import { prefetchStream, saveTrackMeta, streamUrlFor } from "@/lib/stream";
 import { usePlaybackStore, type QueueTrack } from "@/lib/store/playback";
+import { useSettingsStore } from "@/lib/store/settings";
 import { usePremiumStore } from "@/lib/store/premium";
 import { openPremiumGate } from "@/lib/store/premium-gate";
 import {
@@ -276,6 +279,30 @@ export function useAudioEngine() {
     // for the current track after a transient failure without changing id.
   }, [streamVideoId, videoId, index, premiumOk, retryNonce]);
 
+  // Resume-on-startup: once, if the setting is on, press play on the
+  // track the store restored from the last session. `partialize` keeps
+  // the queue + index across launches; this decides whether to actually
+  // start it. The track resumes from its beginning (rehydrate resets
+  // position to 0), matching the setting's copy.
+  //
+  // Gated on `premiumOk` rather than firing at mount: streaming needs
+  // Premium, and the status arrives a moment after launch. Waiting for
+  // it avoids both a spurious premium-gate popup and the race where the
+  // gate flips `playing` back to false before the stream resolves. A
+  // genuinely non-Premium user never reaches the ref-guard, so nothing
+  // auto-plays for them — correct, since they can't stream anyway.
+  const didResumeRef = useRef(false);
+  useEffect(() => {
+    if (didResumeRef.current) return;
+    if (!premiumOk) return;
+    didResumeRef.current = true;
+    if (!useSettingsStore.getState().resumeOnStartup) return;
+    const s = usePlaybackStore.getState();
+    if (s.index < 0 || s.index >= s.queue.length) return;
+    if (s.playing) return;
+    s.setPlaying(true);
+  }, [premiumOk]);
+
   // Play / pause follow store.
   const playing = usePlaybackStore((s) => s.playing);
   useEffect(() => {
@@ -412,7 +439,11 @@ export function useAudioEngine() {
   // Prefetch the next queued track in the background while the current
   // one plays. First-time plays take ~2s (yt-dlp resolve + first audio
   // chunk); by the time the user hits "next" the file is cached on
-  // disk and playback starts instantly with full seek support.
+  // disk and playback starts instantly with full seek support. The
+  // lyrics for that track are warmed into the query cache in the same
+  // pass, so switching to it shows lyrics with no fetch wait either —
+  // both matter most on the Pi's slow in-car connection.
+  const queryClient = useQueryClient();
   const status = usePlaybackStore((s) => s.status);
   const { nextVideoId } = usePlaybackStore(
     useShallow((s) => ({
@@ -434,13 +465,16 @@ export function useAudioEngine() {
     void prefetchStream(nextStreamVideoId);
     // Label the prefetched file too — same reasoning as the play path.
     const st = usePlaybackStore.getState();
-    void saveTrackMeta(
-      nextStreamVideoId,
+    const nextTrack =
       st.index >= 0 && st.index + 1 < st.queue.length
         ? st.queue[st.index + 1]
-        : undefined,
-    );
-  }, [status, nextStreamVideoId]);
+        : undefined;
+    void saveTrackMeta(nextStreamVideoId, nextTrack);
+    // Warm the next track's lyrics into the same cache the lyrics panel
+    // reads. Keyed by title/artist (videoId for ytmusic), so it's a hit
+    // regardless of which stream variant is prefetched above.
+    if (nextTrack) prefetchLyrics(queryClient, nextTrack);
+  }, [status, nextStreamVideoId, queryClient]);
 
   // Auto-extend the queue with radio tracks when we're near the end, so
   // playback continues past the explicit queue.
