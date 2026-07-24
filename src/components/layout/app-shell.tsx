@@ -20,6 +20,7 @@ import { useKaraokeStore } from "@/lib/store/karaoke";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useDragScroll } from "@/hooks/use-drag-scroll";
+import { useNetworkRecovery } from "@/hooks/use-network-recovery";
 import { useAudioEngine } from "@/lib/audio-engine";
 import { useCacheAutoClean } from "@/lib/cache-cleanup";
 import { usePlaybackNotifications } from "@/lib/playback-notifications";
@@ -105,6 +106,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   useGlobalShortcuts();
   useCloseBehaviorSync();
   useCacheAutoClean();
+  // Recover the queries that failed because Wi-Fi wasn't up yet at boot
+  // (the "Sign in / couldn't load home feed" state) once it connects.
+  useNetworkRecovery();
   usePlaybackNotifications();
   const mode = useLayoutStore((s) => s.mode);
   const setMode = useLayoutStore((s) => s.setMode);
