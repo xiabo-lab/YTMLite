@@ -40,8 +40,13 @@ const IS_TAURI =
 /**
  * Custom title bar. The native window frame is disabled
  * (`decorations: false` in tauri.conf.json) so we draw the strip
- * ourselves: drag region down the middle, navigation controls on the
- * left, Windows-style min/maximize/close on the right.
+ * ourselves: navigation controls centered, Windows-style
+ * min/maximize/close on the right, drag region everywhere else.
+ *
+ * The nav cluster is centered rather than tucked in the left corner,
+ * and widely spaced, because this is reached by finger on the Pi's
+ * panel — the corner is the worst place on the screen to hit, and
+ * four 28px targets a few px apart is a coin toss.
  *
  * Clicking our close button still goes through the Rust
  * `WindowEvent::CloseRequested` handler, which either hides the window
@@ -90,7 +95,9 @@ export function TopBar() {
         data-tauri-drag-region
         className="relative z-30 flex h-9 shrink-0 select-none items-center"
       >
-        <div className="flex items-center gap-1 pl-2">
+        {/* Absolutely centered on the window, so the cluster sits in the
+            middle regardless of how wide the caption buttons are. */}
+        <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-24">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -157,8 +164,9 @@ export function TopBar() {
           </Button>
         </div>
 
-        {/* Drag spacer — fills remaining width so the user can grab
-            almost anywhere in the bar to move the window. */}
+        {/* Drag spacer — fills everything left of the caption buttons so
+            the user can grab almost anywhere in the bar to move the
+            window. The nav cluster floats above it. */}
         <div data-tauri-drag-region className="h-full flex-1" />
 
         <div className="flex h-full items-center">

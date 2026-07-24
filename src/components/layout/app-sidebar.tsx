@@ -30,7 +30,6 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -100,25 +99,14 @@ export function AppSidebar() {
       collapsible="icon"
       className="px-2 pb-2 pt-0 duration-300 ease-out [&>[data-slot=sidebar-inner]]:rounded-[10px] [&>[data-slot=sidebar-inner]]:bg-surface [&>[data-slot=sidebar-inner]]:shadow-none"
     >
-      <SidebarHeader className="flex-row items-center gap-2 px-4 pt-[18px] pb-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
-        {/* Single round logo. In expanded mode it sits at px-4 to line
-         *  up with menu icons (which are at group-p-2 + button-p-2 =
-         *  16px). In collapsed mode the row centers it like the
-         *  centered menu icons below. */}
-        <img
-          src="/ytmlite-icon.svg"
-          alt="YTMLite"
-          className="size-7 shrink-0"
-        />
-        <span className="text-xl font-semibold leading-none tracking-tight transition-opacity duration-200 group-data-[collapsible=icon]:hidden">
-          YTMLite
-        </span>
-      </SidebarHeader>
+      {/* No logo/wordmark header: on the Pi's 440px-tall panel that
+          strip cost ~46px to tell the user which app they're looking
+          at, which they know. The nav starts at the top instead.
 
-      {/* The content column itself doesn't scroll: Browse stays pinned
+          The content column itself doesn't scroll: Browse stays pinned
           (shrink-0) and only the Playlists list scrolls, so the top nav
           never slides out of view when the library is long. */}
-      <SidebarContent className="gap-0 overflow-hidden">
+      <SidebarContent className="gap-0 overflow-hidden pt-2">
         <SidebarGroup className="shrink-0 py-1">
           <SidebarGroupLabel>Browse</SidebarGroupLabel>
           <SidebarGroupContent>

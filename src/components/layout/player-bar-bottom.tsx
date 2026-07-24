@@ -170,8 +170,12 @@ export function PlayerBarBottom() {
             The gap is wide because this bar is driven by a finger on
             the Pi's touch panel — adjacent 36px targets 4px apart are
             a mis-tap waiting to happen (skipping a track when you
-            meant to pause). Same reasoning as the karaoke stage. */}
-        <div className="flex shrink-0 items-center gap-6">
+            meant to pause). Same reasoning as the karaoke stage.
+
+            The very wide spacing only kicks in at 2xl: it needs ~670px
+            of bar to itself, which the Pi's 1920px panel has and a
+            1280px desktop window does not. */}
+        <div className="flex shrink-0 items-center gap-6 2xl:gap-28">
           <Button
             variant="ghost"
             size="icon"
